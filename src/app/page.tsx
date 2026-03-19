@@ -19,7 +19,7 @@ import {
   ChevronRight, ChevronLeft, X, Plus, Check, Lock, Eye, EyeOff, 
   UserPlus, Camera, Edit, Trash2, Phone, Clock, Star, Gift, Music,
   Volume2, VolumeX, Shield, Key, Monitor, Globe2, MessageSquare,
-  BookOpen, Radio, HeartHandshake, Loader2, Film
+  BookOpen, Radio, HeartHandshake, Loader2, Film, Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as api from '@/lib/api';
@@ -39,6 +39,8 @@ interface UserType {
   workplace?: string;
   education?: string;
   relationshipStatus?: string;
+  dateOfBirth?: string;
+  gender?: string;
   isVerified: boolean;
   isOnline: boolean;
   friendCount?: number;
@@ -787,18 +789,49 @@ function ChatView({ chat, currentUser, onBack, onSendMessage }: {
 }
 
 // ============ AUTH SCREEN ============
-function AuthScreen({ onLogin, onRegister, loading }: { 
-  onLogin: (email: string, password: string) => void; 
-  onRegister: (data: { email: string; password: string; firstName: string; lastName: string }) => void;
+interface AuthScreenProps {
+  onLogin: (email: string, password: string) => void;
+  onRegister: (data: { 
+    email: string; 
+    password: string; 
+    firstName: string; 
+    lastName: string;
+    dateOfBirth?: string;
+    gender?: string;
+  }) => void;
   loading: boolean;
-}) {
+}
+
+// Email validation regex
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+function AuthScreen({ onLogin, onRegister, loading }: AuthScreenProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [gender, setGender] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  
+  // Email verification states
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [displayCode, setDisplayCode] = useState('');
+  const [pendingUserData, setPendingUserData] = useState<AuthScreenProps['onRegister'] extends (data: infer D) => void ? D : never | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  
+  // Forgot password states
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [displayResetCode, setDisplayResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [resetStep, setResetStep] = useState<'email' | 'code' | 'password'>('email');
+  const [resetting, setResetting] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -809,15 +842,362 @@ function AuthScreen({ onLogin, onRegister, loading }: {
         setError('Please fill in all fields');
         return;
       }
+      if (!EMAIL_REGEX.test(email)) {
+        setError('Please enter a valid email address');
+        return;
+      }
       await onLogin(email, password);
     } else {
       if (!email || !password || !firstName || !lastName) {
         setError('Please fill in all fields');
         return;
       }
-      await onRegister({ email, password, firstName, lastName });
+      if (!EMAIL_REGEX.test(email)) {
+        setError('Please enter a valid email address');
+        return;
+      }
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters');
+        return;
+      }
+      
+      const userData = { email, password, firstName, lastName, dateOfBirth, gender };
+      
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userData),
+        });
+        const data = await res.json();
+        
+        if (data.error) {
+          setError(data.error);
+          return;
+        }
+        
+        if (data.requiresVerification) {
+          setPendingUserData(userData);
+          setDisplayCode(data.verificationCode);
+          setShowVerification(true);
+        } else if (data.user) {
+          onRegister(userData);
+        }
+      } catch (err) {
+        setError('Registration failed. Please try again.');
+      }
     }
   };
+
+  const handleVerifyCode = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      setError('Please enter a 6-digit code');
+      return;
+    }
+    
+    setVerifying(true);
+    setError('');
+    
+    try {
+      const res = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: verificationCode }),
+      });
+      const data = await res.json();
+      
+      if (data.error) {
+        setError(data.error);
+      } else {
+        // Verification successful, now login directly
+        setShowVerification(false);
+        // Call login with the email and password from the registration form
+        if (password) {
+          onLogin(email, password);
+        }
+      }
+    } catch (err) {
+      setError('Verification failed. Please try again.');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    try {
+      const res = await fetch('/api/auth/verify-email', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      
+      if (data.verificationCode) {
+        setDisplayCode(data.verificationCode);
+        setError('');
+      }
+    } catch (err) {
+      setError('Failed to resend code');
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (resetStep === 'email') {
+      if (!resetEmail || !EMAIL_REGEX.test(resetEmail)) {
+        setError('Please enter a valid email address');
+        return;
+      }
+      
+      setResetting(true);
+      setError('');
+      
+      try {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: resetEmail }),
+        });
+        const data = await res.json();
+        
+        if (data.resetCode) {
+          setDisplayResetCode(data.resetCode);
+          setResetStep('code');
+        } else {
+          setError('If an account exists, a reset code has been sent');
+          setResetStep('code');
+        }
+      } catch (err) {
+        setError('Failed to send reset code');
+      } finally {
+        setResetting(false);
+      }
+    } else if (resetStep === 'code') {
+      if (!resetCode || resetCode.length !== 6) {
+        setError('Please enter a 6-digit code');
+        return;
+      }
+      setResetStep('password');
+    } else if (resetStep === 'password') {
+      if (!newPassword || newPassword.length < 8) {
+        setError('Password must be at least 8 characters');
+        return;
+      }
+      
+      setResetting(true);
+      setError('');
+      
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: resetEmail, code: resetCode, newPassword }),
+        });
+        const data = await res.json();
+        
+        if (data.error) {
+          setError(data.error);
+        } else {
+          setResetSuccess(true);
+          setTimeout(() => {
+            setShowForgotPassword(false);
+            setResetStep('email');
+            setResetEmail('');
+            setResetCode('');
+            setNewPassword('');
+            setDisplayResetCode('');
+            setResetSuccess(false);
+          }, 2000);
+        }
+      } catch (err) {
+        setError('Failed to reset password');
+      } finally {
+        setResetting(false);
+      }
+    }
+  };
+
+  // Verification Screen
+  if (showVerification) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                <Mail className="w-8 h-8 text-[#1877F2]" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Verify your email</h2>
+              <p className="text-gray-500 text-sm mt-2">
+                We've sent a 6-digit code to<br />
+                <span className="font-medium text-gray-700">{email}</span>
+              </p>
+            </div>
+
+            {/* Demo: Show the code */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-yellow-800 text-center">
+                <strong>Demo Mode:</strong> Your verification code is<br />
+                <span className="text-2xl font-bold text-yellow-900">{displayCode}</span>
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Enter 6-digit code</label>
+                <Input
+                  placeholder="000000"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="h-12 text-center text-xl tracking-widest"
+                  maxLength={6}
+                />
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-sm text-center">{error}</div>
+              )}
+
+              <Button
+                onClick={handleVerifyCode}
+                disabled={verifying || verificationCode.length !== 6}
+                className="w-full h-12 bg-[#1877F2] hover:bg-[#166FE5] text-white font-semibold"
+              >
+                {verifying ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify'}
+              </Button>
+
+              <div className="text-center">
+                <button
+                  onClick={handleResendCode}
+                  className="text-sm text-[#1877F2] hover:underline"
+                >
+                  Resend code
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowVerification(false)}
+                className="w-full text-sm text-gray-500 hover:text-gray-700"
+              >
+                ← Back to registration
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Forgot Password Modal
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                <Key className="w-8 h-8 text-[#1877F2]" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Reset your password</h2>
+              {resetStep === 'email' && (
+                <p className="text-gray-500 text-sm mt-2">Enter your email to receive a reset code</p>
+              )}
+              {resetStep === 'code' && (
+                <p className="text-gray-500 text-sm mt-2">Enter the 6-digit code sent to your email</p>
+              )}
+              {resetStep === 'password' && (
+                <p className="text-gray-500 text-sm mt-2">Create a new password</p>
+              )}
+            </div>
+
+            {/* Demo: Show the reset code */}
+            {resetStep === 'code' && displayResetCode && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-yellow-800 text-center">
+                  <strong>Demo Mode:</strong> Your reset code is<br />
+                  <span className="text-2xl font-bold text-yellow-900">{displayResetCode}</span>
+                </p>
+              </div>
+            )}
+
+            {resetSuccess ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                <Check className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                <p className="text-green-700 font-medium">Password reset successfully!</p>
+                <p className="text-green-600 text-sm">Redirecting to login...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {resetStep === 'email' && (
+                  <Input
+                    type="email"
+                    placeholder="Email address"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="h-12"
+                  />
+                )}
+
+                {resetStep === 'code' && (
+                  <Input
+                    placeholder="000000"
+                    value={resetCode}
+                    onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="h-12 text-center text-xl tracking-widest"
+                    maxLength={6}
+                  />
+                )}
+
+                {resetStep === 'password' && (
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="New password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="h-12 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
+                    </button>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="text-red-500 text-sm text-center">{error}</div>
+                )}
+
+                <Button
+                  onClick={handleForgotPassword}
+                  disabled={resetting}
+                  className="w-full h-12 bg-[#1877F2] hover:bg-[#166FE5] text-white font-semibold"
+                >
+                  {resetting ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                    resetStep === 'password' ? 'Reset Password' : 
+                    resetStep === 'code' ? 'Continue' : 'Send Reset Code'
+                  )}
+                </Button>
+
+                <button
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setResetStep('email');
+                    setError('');
+                  }}
+                  className="w-full text-sm text-gray-500 hover:text-gray-700"
+                >
+                  ← Back to login
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
@@ -833,20 +1213,46 @@ function AuthScreen({ onLogin, onRegister, loading }: {
         <div className="bg-white rounded-xl shadow-lg p-6">
           <form onSubmit={handleSubmit}>
             {!isLogin && (
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <Input
-                  placeholder="First name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="h-12"
-                />
-                <Input
-                  placeholder="Last name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="h-12"
-                />
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <Input
+                    placeholder="First name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="h-12"
+                  />
+                  <Input
+                    placeholder="Last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+                
+                <div className="mb-3">
+                  <label className="text-xs text-gray-500 mb-1 block">Date of birth</label>
+                  <Input
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    className="h-10"
+                  />
+                </div>
+                
+                <div className="mb-3">
+                  <label className="text-xs text-gray-500 mb-1 block">Gender</label>
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value)}
+                    className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+              </>
             )}
             
             <Input
@@ -888,7 +1294,12 @@ function AuthScreen({ onLogin, onRegister, loading }: {
           </form>
 
           <div className="text-center mt-4">
-            <a href="#" className="text-sm text-[#1877F2] hover:underline">Forgot password?</a>
+            <button 
+              onClick={() => setShowForgotPassword(true)}
+              className="text-sm text-[#1877F2] hover:underline"
+            >
+              Forgot password?
+            </button>
           </div>
 
           <Separator className="my-4" />
@@ -921,6 +1332,37 @@ function EditProfileModal({ user, isOpen, onClose, onSave }: {
   const [hometown, setHometown] = useState(user.hometown || '');
   const [workplace, setWorkplace] = useState(user.workplace || '');
   const [education, setEducation] = useState(user.education || '');
+  const [phone, setPhone] = useState(user.phone || '');
+  const [gender, setGender] = useState(user.gender || '');
+  const [dateOfBirth, setDateOfBirth] = useState(user.dateOfBirth || '');
+  const [avatar, setAvatar] = useState(user.avatar || '');
+  const [coverPhoto, setCoverPhoto] = useState(user.coverPhoto || '');
+  const [activeTab, setActiveTab] = useState<'basic' | 'contact' | 'photos'>('basic');
+  
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCoverPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSave = () => {
     onSave({
@@ -930,52 +1372,201 @@ function EditProfileModal({ user, isOpen, onClose, onSave }: {
       currentCity,
       hometown,
       workplace,
-      education
+      education,
+      phone,
+      gender,
+      dateOfBirth,
+      avatar,
+      coverPhoto
     });
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Profile</DialogTitle>
         </DialogHeader>
+        
+        {/* Profile Photo Section */}
+        <div className="relative mb-4">
+          {/* Cover Photo */}
+          <div className="h-32 bg-gray-200 rounded-t-lg overflow-hidden relative">
+            {coverPhoto && (
+              <img src={coverPhoto} alt="" className="w-full h-full object-cover" />
+            )}
+            <button 
+              onClick={() => coverInputRef.current?.click()}
+              className="absolute bottom-2 right-2 bg-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow-lg hover:bg-gray-100"
+            >
+              <Camera className="w-4 h-4" /> Edit cover
+            </button>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleCoverSelect}
+              className="hidden"
+            />
+          </div>
+          
+          {/* Profile Picture */}
+          <div className="absolute -bottom-10 left-4">
+            <div className="relative">
+              <Avatar className="w-24 h-24 border-4 border-white shadow-lg">
+                <AvatarImage src={avatar} />
+                <AvatarFallback>{firstName?.charAt(0)}{lastName?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <button 
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center border-2 border-white hover:bg-gray-300"
+              >
+                <Camera className="w-4 h-4 text-gray-600" />
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarSelect}
+                className="hidden"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b mt-8 mb-4">
+          {[
+            { id: 'basic', label: 'Basic Info' },
+            { id: 'contact', label: 'Contact' },
+            { id: 'photos', label: 'Photos' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={cn(
+                "px-4 py-2 text-sm font-medium relative",
+                activeTab === tab.id ? "text-[#1877F2]" : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              {tab.label}
+              {activeTab === tab.id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1877F2]" />
+              )}
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm text-gray-500 mb-1 block">First Name</label>
-              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          {activeTab === 'basic' && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm text-gray-500 mb-1 block">First Name</label>
+                  <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-500 mb-1 block">Last Name</label>
+                  <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Bio</label>
+                <Textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={2} />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Gender</label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Date of Birth</label>
+                <Input 
+                  type="date" 
+                  value={dateOfBirth ? dateOfBirth.split('T')[0] : ''} 
+                  onChange={(e) => setDateOfBirth(e.target.value)} 
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Current City</label>
+                <Input value={currentCity} onChange={(e) => setCurrentCity(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Hometown</label>
+                <Input value={hometown} onChange={(e) => setHometown(e.target.value)} />
+              </div>
+            </>
+          )}
+
+          {activeTab === 'contact' && (
+            <>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Phone</label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Add phone number" />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Workplace</label>
+                <Input value={workplace} onChange={(e) => setWorkplace(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Education</label>
+                <Input value={education} onChange={(e) => setEducation(e.target.value)} />
+              </div>
+            </>
+          )}
+
+          {activeTab === 'photos' && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-gray-500 mb-2 block">Profile Picture</label>
+                <div className="flex items-center gap-4">
+                  <Avatar className="w-20 h-20">
+                    <AvatarImage src={avatar} />
+                    <AvatarFallback>{firstName?.charAt(0)}{lastName?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="flex items-center gap-2"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Change Photo
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-2 block">Cover Photo</label>
+                <div className="relative h-32 bg-gray-200 rounded-lg overflow-hidden">
+                  {coverPhoto && (
+                    <img src={coverPhoto} alt="" className="w-full h-full object-cover" />
+                  )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => coverInputRef.current?.click()}
+                    className="absolute bottom-2 right-2 bg-white/80 hover:bg-white"
+                  >
+                    <Camera className="w-4 h-4 mr-1" />
+                    Change Cover
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-gray-500 mb-1 block">Last Name</label>
-              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm text-gray-500 mb-1 block">Bio</label>
-            <Textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={2} />
-          </div>
-          <div>
-            <label className="text-sm text-gray-500 mb-1 block">Current City</label>
-            <Input value={currentCity} onChange={(e) => setCurrentCity(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm text-gray-500 mb-1 block">Hometown</label>
-            <Input value={hometown} onChange={(e) => setHometown(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm text-gray-500 mb-1 block">Workplace</label>
-            <Input value={workplace} onChange={(e) => setWorkplace(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm text-gray-500 mb-1 block">Education</label>
-            <Input value={education} onChange={(e) => setEducation(e.target.value)} />
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-            <Button onClick={handleSave} className="flex-1 bg-[#1877F2]">Save</Button>
-          </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 mt-4 pt-4 border-t">
+          <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+          <Button onClick={handleSave} className="flex-1 bg-[#1877F2] hover:bg-[#166FE5]">Save Changes</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -1844,14 +2435,57 @@ export default function FacebookClone() {
               <h2 className="text-lg font-bold mb-4">Settings & Privacy</h2>
               
               <div className="space-y-4">
+                {/* Personal Information Section */}
+                <div className="space-y-2">
+                  <p className="font-semibold text-gray-500 text-xs">PERSONAL INFORMATION</p>
+                  <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Mail className="w-5 h-5 text-gray-500" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500">Email</p>
+                        <p className="text-sm font-medium">{currentUser.email || 'Not set'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Phone className="w-5 h-5 text-gray-500" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500">Phone</p>
+                        <p className="text-sm font-medium">{currentUser.phone || 'Not set'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <User className="w-5 h-5 text-gray-500" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500">Gender</p>
+                        <p className="text-sm font-medium capitalize">{currentUser.gender || 'Not set'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5 text-gray-500" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500">Date of birth</p>
+                        <p className="text-sm font-medium">
+                          {currentUser.dateOfBirth 
+                            ? new Date(currentUser.dateOfBirth).toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                              })
+                            : 'Not set'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <p className="font-semibold text-gray-500 text-xs">ACCOUNT</p>
                   <button 
                     onClick={() => { setShowSettings(false); setShowEditProfile(true); }}
                     className="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-xl"
                   >
-                    <User className="w-5 h-5 text-gray-600" />
-                    <span className="flex-1 text-left font-medium text-sm">Personal details</span>
+                    <Edit className="w-5 h-5 text-gray-600" />
+                    <span className="flex-1 text-left font-medium text-sm">Edit profile</span>
                     <ChevronRight className="w-5 h-5 text-gray-400" />
                   </button>
                   <button className="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-xl">

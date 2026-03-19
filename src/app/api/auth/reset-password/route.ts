@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
-// Reset password with token
+// Reset password with 6-digit code
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { token, newPassword } = body;
+    const { email, code, newPassword } = body;
 
-    if (!token || !newPassword) {
-      return NextResponse.json({ error: 'Token and new password are required' }, { status: 400 });
+    if (!email || !code || !newPassword) {
+      return NextResponse.json({ error: 'Email, code, and new password are required' }, { status: 400 });
     }
 
     // Validate password
@@ -17,21 +17,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
     }
 
-    // Find valid reset token
+    // Find user by email
+    const user = await db.user.findUnique({ where: { email } });
+    if (!user) {
+      return NextResponse.json({ error: 'Invalid reset request' }, { status: 400 });
+    }
+
+    // Find valid reset code
     const resetRecord = await db.passwordReset.findFirst({
       where: {
-        token,
+        userId: user.id,
+        token: code,
         used: false,
         expiresAt: { gt: new Date() }
       }
     });
 
     if (!resetRecord) {
-      return NextResponse.json({ error: 'Invalid or expired reset token' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid or expired reset code' }, { status: 400 });
     }
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
 
     // Update user password
     await db.user.update({
@@ -39,7 +46,7 @@ export async function POST(request: NextRequest) {
       data: { password: hashedPassword }
     });
 
-    // Mark token as used
+    // Mark code as used
     await db.passwordReset.update({
       where: { id: resetRecord.id },
       data: { used: true }
@@ -53,7 +60,44 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Verify reset token
+// Verify reset code
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { email, code } = body;
+
+    if (!email || !code) {
+      return NextResponse.json({ error: 'Email and code are required' }, { status: 400 });
+    }
+
+    // Find user by email
+    const user = await db.user.findUnique({ where: { email } });
+    if (!user) {
+      return NextResponse.json({ valid: false });
+    }
+
+    const resetRecord = await db.passwordReset.findFirst({
+      where: {
+        userId: user.id,
+        token: code,
+        used: false,
+        expiresAt: { gt: new Date() }
+      }
+    });
+
+    if (!resetRecord) {
+      return NextResponse.json({ valid: false, error: 'Invalid or expired code' });
+    }
+
+    return NextResponse.json({ valid: true });
+
+  } catch (error) {
+    console.error('Verify reset code error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// Legacy GET endpoint for token-based verification
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

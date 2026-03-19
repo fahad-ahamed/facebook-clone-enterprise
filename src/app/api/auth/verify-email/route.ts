@@ -1,67 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getAuthUser } from '@/lib/auth';
-import crypto from 'crypto';
 
-// Request email verification
+// Verify email with 6-digit code
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await getAuthUser(request);
-    
-    let userId = authUser?.userId;
-    
-    // If not authenticated, check for email in body
-    if (!userId) {
-      const body = await request.json();
-      const { email } = body;
-      
-      if (!email) {
-        return NextResponse.json({ error: 'Authentication or email required' }, { status: 400 });
-      }
-      
-      const user = await db.user.findUnique({ where: { email } });
-      if (!user) {
-        return NextResponse.json({ message: 'If an account exists, a verification email has been sent.' });
-      }
-      userId = user.id;
+    const body = await request.json();
+    const { email, code } = body;
+
+    if (!email || !code) {
+      return NextResponse.json({ error: 'Email and verification code are required' }, { status: 400 });
     }
 
-    // Check if already verified
-    const user = await db.user.findUnique({ where: { id: userId } });
-    if (user?.isVerified) {
+    // Find user by email
+    const user = await db.user.findUnique({ where: { email } });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 400 });
+    }
+
+    if (user.isVerified) {
+      return NextResponse.json({ message: 'Email is already verified', user });
+    }
+
+    // Find valid verification code
+    const verificationRecord = await db.verificationToken.findFirst({
+      where: {
+        userId: user.id,
+        token: code,
+        type: 'email_verification',
+        used: false,
+        expiresAt: { gt: new Date() }
+      }
+    });
+
+    if (!verificationRecord) {
+      return NextResponse.json({ error: 'Invalid or expired verification code' }, { status: 400 });
+    }
+
+    // Update user as verified
+    const updatedUser = await db.user.update({
+      where: { id: user.id },
+      data: { isVerified: true }
+    });
+
+    // Mark token as used
+    await db.verificationToken.update({
+      where: { id: verificationRecord.id },
+      data: { used: true }
+    });
+
+    const { password: _, ...userWithoutPassword } = updatedUser;
+
+    return NextResponse.json({ 
+      message: 'Email verified successfully',
+      user: userWithoutPassword
+    });
+
+  } catch (error) {
+    console.error('Verify email error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// Request new verification code
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { email } = body;
+
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+
+    const user = await db.user.findUnique({ where: { email } });
+    if (!user) {
+      return NextResponse.json({ message: 'If an account exists, a new code has been sent.' });
+    }
+
+    if (user.isVerified) {
       return NextResponse.json({ message: 'Email is already verified' });
     }
 
-    // Generate verification token
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    // Generate new 6-digit code
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Create verification token
+    // Create new verification token
     await db.verificationToken.create({
       data: {
-        userId,
-        token,
+        userId: user.id,
+        token: newCode,
         type: 'email_verification',
         expiresAt
       }
     });
 
-    // In production, send email with verification link
-    console.log(`Email verification token for user ${userId}: ${token}`);
-
+    // For demo: return the code in response
     return NextResponse.json({ 
-      message: 'Verification email sent',
-      // Remove in production:
-      devToken: process.env.NODE_ENV === 'development' ? token : undefined
+      message: 'New verification code sent',
+      verificationCode: newCode // Demo: show code in UI
     });
 
   } catch (error) {
-    console.error('Request verification error:', error);
+    console.error('Resend verification error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// Verify email with token
+// Legacy GET endpoint for token-based verification
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
