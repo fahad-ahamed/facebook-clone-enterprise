@@ -1749,7 +1749,7 @@ export default function FacebookClone() {
   // Current user
   const currentUser: UserType = authUser ? {
     ...authUser,
-    friendCount: 1547,
+    friendCount: realFriendCount || 0,
     followerCount: 12000,
     followingCount: 890
   } as UserType : defaultUser;
@@ -1765,6 +1765,11 @@ export default function FacebookClone() {
   const [showChat, setShowChat] = useState<string | null>(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showCreateStory, setShowCreateStory] = useState(false);
+  const [profileTab, setProfileTab] = useState('Posts');
+  const [showFriendsList, setShowFriendsList] = useState(false);
+  const [friendsList, setFriendsList] = useState<UserType[]>([]);
+  const [blockedUsersList, setBlockedUsersList] = useState<UserType[]>([]);
+  const [realFriendCount, setRealFriendCount] = useState(0);
   
   // Create Post States
   const [postContent, setPostContent] = useState('');
@@ -1890,6 +1895,30 @@ export default function FacebookClone() {
       { id: '3', user: mockUsers[2], lastMessage: { content: 'Thanks!', createdAt: new Date(Date.now() - 7200000).toISOString(), isRead: true }, unreadCount: 0, messages: [] },
     ];
   }, [conversations]);
+
+  // Fetch friend count and friends list on mount
+  useEffect(() => {
+    const fetchFriendData = async () => {
+      try {
+        const [friendsRes, blockedRes] = await Promise.all([
+          api.getFriends('friends'),
+          api.getBlockedUsers()
+        ]);
+        if (friendsRes.friends) {
+          setFriendsList(friendsRes.friends);
+          setRealFriendCount(friendsRes.friends.length);
+        }
+        if (blockedRes.blockedUsers) {
+          setBlockedUsersList(blockedRes.blockedUsers);
+        }
+      } catch (error) {
+        console.error('Fetch friend data error:', error);
+      }
+    };
+    if (authUser) {
+      fetchFriendData();
+    }
+  }, [authUser]);
 
   // Computed
   const unreadNotifications = apiUnreadCount || notifications.filter(n => !n.isRead).length;
@@ -2422,6 +2451,178 @@ export default function FacebookClone() {
     </div>
   );
 
+  const renderEvents = () => (
+    <div className="bg-white min-h-screen p-3">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-bold">Events</h1>
+        <button className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center">
+          <Plus className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
+      <div className="flex gap-2 mb-4 overflow-x-auto">
+        {['For You', 'Online', 'Local', 'Following'].map((tab, i) => (
+          <button key={tab} className={cn("px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap", i === 0 ? "bg-[#1877F2] text-white" : "bg-gray-100 text-gray-600")}>
+            {tab}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-3">
+        {[
+          { id: '1', title: 'Tech Meetup 2024', date: 'Dec 15, 2024', location: 'San Francisco, CA', going: 234, image: 'https://picsum.photos/seed/event1/400/200' },
+          { id: '2', title: 'Music Festival', date: 'Dec 20, 2024', location: 'Los Angeles, CA', going: 1520, image: 'https://picsum.photos/seed/event2/400/200' },
+          { id: '3', title: 'Art Exhibition', date: 'Dec 25, 2024', location: 'New York, NY', going: 89, image: 'https://picsum.photos/seed/event3/400/200' },
+        ].map((event) => (
+          <div key={event.id} className="bg-white rounded-xl border overflow-hidden">
+            <img src={event.image} className="w-full h-32 object-cover" alt="" />
+            <div className="p-3">
+              <p className="text-xs text-[#1877F2] font-medium">{event.date}</p>
+              <h3 className="font-semibold">{event.title}</h3>
+              <p className="text-sm text-gray-500">{event.location}</p>
+              <div className="flex items-center gap-2 mt-2">
+                <Users className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-500">{event.going} going</span>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button className="flex-1 py-2 bg-[#1877F2] text-white rounded-lg text-sm font-medium">Interested</button>
+                <button className="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-medium">Share</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderPages = () => (
+    <div className="bg-white min-h-screen p-3">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-bold">Pages</h1>
+        <button className="w-9 h-9 bg-[#1877F2] rounded-full flex items-center justify-center">
+          <Plus className="w-5 h-5 text-white" />
+        </button>
+      </div>
+      <div className="flex gap-2 mb-4">
+        {['Suggestions', 'Liked', 'Following'].map((tab, i) => (
+          <button key={tab} className={cn("px-4 py-2 rounded-full text-sm font-medium", i === 0 ? "bg-[#1877F2] text-white" : "bg-gray-100 text-gray-600")}>
+            {tab}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-3">
+        {[
+          { id: '1', name: 'Tech News Daily', category: 'News & Media', followers: '2.5M', image: 'https://picsum.photos/seed/page1/200/200' },
+          { id: '2', name: 'Food & Travel', category: 'Lifestyle', followers: '1.2M', image: 'https://picsum.photos/seed/page2/200/200' },
+          { id: '3', name: 'Sports Center', category: 'Sports', followers: '5.8M', image: 'https://picsum.photos/seed/page3/200/200' },
+        ].map((page) => (
+          <div key={page.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <img src={page.image} className="w-14 h-14 rounded-lg object-cover" alt="" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold truncate">{page.name}</p>
+              <p className="text-xs text-gray-500">{page.category} • {page.followers} followers</p>
+            </div>
+            <button className="px-4 py-1.5 bg-[#1877F2] text-white rounded-lg text-sm font-medium">Like</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderGaming = () => (
+    <div className="bg-white min-h-screen p-3">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-bold">Gaming</h1>
+        <button className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center">
+          <Search className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
+      <div className="flex gap-2 mb-4 overflow-x-auto">
+        {['For You', 'Following', 'Live Now', 'Popular'].map((tab, i) => (
+          <button key={tab} className={cn("px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap", i === 0 ? "bg-[#1877F2] text-white" : "bg-gray-100 text-gray-600")}>
+            {tab}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-3">
+        {[
+          { id: '1', name: 'Candy Crush Saga', players: '10M playing', image: 'https://picsum.photos/seed/game1/200/200' },
+          { id: '2', name: 'FarmVille 3', players: '5M playing', image: 'https://picsum.photos/seed/game2/200/200' },
+          { id: '3', name: 'Words With Friends', players: '3M playing', image: 'https://picsum.photos/seed/game3/200/200' },
+        ].map((game) => (
+          <div key={game.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <img src={game.image} className="w-14 h-14 rounded-xl object-cover" alt="" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold truncate">{game.name}</p>
+              <p className="text-xs text-gray-500">{game.players}</p>
+            </div>
+            <button className="px-4 py-1.5 bg-[#1877F2] text-white rounded-lg text-sm font-medium">Play</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderFavorites = () => (
+    <div className="bg-white min-h-screen p-3">
+      <h1 className="text-2xl font-bold mb-3">Favorites</h1>
+      <p className="text-gray-500 text-sm mb-4">Quick access to the things you love</p>
+      <div className="space-y-3">
+        {[
+          { id: '1', name: 'Sarah Wilson', type: 'Friend', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah' },
+          { id: '2', name: 'Tech News Daily', type: 'Page', avatar: 'https://picsum.photos/seed/fav1/100/100' },
+          { id: '3', name: 'Photography Group', type: 'Group', avatar: 'https://picsum.photos/seed/fav2/100/100' },
+        ].map((fav) => (
+          <button key={fav.id} className="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100">
+            <Avatar className="w-12 h-12">
+              <AvatarImage src={fav.avatar} />
+            </Avatar>
+            <div className="flex-1 text-left">
+              <p className="font-semibold">{fav.name}</p>
+              <p className="text-xs text-gray-500">{fav.type}</p>
+            </div>
+            <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderGroups = () => (
+    <div className="bg-white min-h-screen p-3">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-bold">Groups</h1>
+        <button className="w-9 h-9 bg-[#1877F2] rounded-full flex items-center justify-center">
+          <Plus className="w-5 h-5 text-white" />
+        </button>
+      </div>
+      <div className="flex gap-2 mb-4">
+        {['Your Groups', 'Discover', 'Invites'].map((tab, i) => (
+          <button key={tab} className={cn("px-4 py-2 rounded-full text-sm font-medium", i === 0 ? "bg-[#1877F2] text-white" : "bg-gray-100 text-gray-600")}>
+            {tab}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-3">
+        {[
+          { id: '1', name: 'Photography Enthusiasts', members: 15420, cover: 'https://picsum.photos/seed/group1/400/200' },
+          { id: '2', name: 'Tech Startups', members: 8934, cover: 'https://picsum.photos/seed/group2/400/200' },
+          { id: '3', name: 'Travel Adventures', members: 25678, cover: 'https://picsum.photos/seed/group3/400/200' },
+        ].map((group) => (
+          <div key={group.id} className="bg-white rounded-xl border overflow-hidden">
+            <img src={group.cover} className="w-full h-24 object-cover" alt="" />
+            <div className="p-3">
+              <h3 className="font-semibold">{group.name}</h3>
+              <p className="text-sm text-gray-500">{group.members.toLocaleString()} members</p>
+              <div className="flex gap-2 mt-2">
+                <button className="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-medium">View</button>
+                <button className="flex-1 py-2 bg-[#1877F2] text-white rounded-lg text-sm font-medium">Invite</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderSettings = () => (
     <Sheet open={showSettings} onOpenChange={setShowSettings}>
       <SheetContent side="left" className="w-80 p-0">
@@ -2445,12 +2646,21 @@ export default function FacebookClone() {
               
               <div className="grid grid-cols-4 gap-1 py-2">
                 {[
-                  { icon: Users, label: 'Friends', color: 'from-blue-400 to-blue-600' },
-                  { icon: Clock, label: 'Memories', color: 'from-purple-400 to-purple-600' },
-                  { icon: Bookmark, label: 'Saved', color: 'from-purple-500 to-pink-500' },
-                  { icon: Users, label: 'Groups', color: 'from-blue-400 to-blue-600' },
-                ].map(({ icon: Icon, label, color }) => (
-                  <button key={label} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100">
+                  { icon: Users, label: 'Friends', color: 'from-blue-400 to-blue-600', page: 'friends' },
+                  { icon: Clock, label: 'Memories', color: 'from-purple-400 to-purple-600', page: null },
+                  { icon: Bookmark, label: 'Saved', color: 'from-purple-500 to-pink-500', page: null },
+                  { icon: Users, label: 'Groups', color: 'from-blue-400 to-blue-600', page: 'groups' },
+                ].map(({ icon: Icon, label, color, page }) => (
+                  <button 
+                    key={label} 
+                    onClick={() => {
+                      if (page) {
+                        setShowSettings(false);
+                        setCurrentPage(page);
+                      }
+                    }}
+                    className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100"
+                  >
                     <div className={cn("w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center", color)}>
                       <Icon className="w-5 h-5 text-white" />
                     </div>
@@ -2462,14 +2672,21 @@ export default function FacebookClone() {
               <Separator className="my-2" />
               
               {[
-                { icon: Video, label: 'Video' },
-                { icon: ShoppingBag, label: 'Marketplace' },
-                { icon: Calendar, label: 'Events' },
-                { icon: Flag, label: 'Pages' },
-                { icon: Gamepad2, label: 'Gaming' },
-                { icon: Star, label: 'Favorites' },
-              ].map(({ icon: Icon, label }) => (
-                <button key={label} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100">
+                { icon: Video, label: 'Video', page: 'watch' },
+                { icon: ShoppingBag, label: 'Marketplace', page: 'marketplace' },
+                { icon: Calendar, label: 'Events', page: 'events' },
+                { icon: Flag, label: 'Pages', page: 'pages' },
+                { icon: Gamepad2, label: 'Gaming', page: 'gaming' },
+                { icon: Star, label: 'Favorites', page: 'favorites' },
+              ].map(({ icon: Icon, label, page }) => (
+                <button 
+                  key={label} 
+                  onClick={() => {
+                    setShowSettings(false);
+                    if (page) setCurrentPage(page);
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100"
+                >
                   <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
                     <Icon className="w-5 h-5 text-white" />
                   </div>
@@ -2714,84 +2931,301 @@ export default function FacebookClone() {
     </Dialog>
   );
 
-  const renderProfile = () => (
-    <div className="bg-white min-h-screen">
-      <div className="relative h-48 bg-gray-200">
-        {currentUser.coverPhoto && <img src={currentUser.coverPhoto} className="w-full h-full object-cover" alt="" />}
-        <button 
-          onClick={() => fileInputRef.current?.click()}
-          className="absolute bottom-3 right-3 bg-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow-lg"
-        >
-          <Camera className="w-4 h-4" /> Edit cover photo
-        </button>
-      </div>
-      <div className="relative px-4">
-        <div className="relative -mt-20 w-36 h-36">
-          <Avatar className="w-36 h-36 border-4 border-white shadow-lg">
-            <AvatarImage src={currentUser.avatar} className="object-cover" />
-          </Avatar>
-          <button className="absolute bottom-1 right-1 w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center shadow">
-            <Camera className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-      </div>
-      <div className="px-4 pt-3 pb-4">
-        <div className="flex items-center gap-1.5">
-          <h1 className="text-2xl font-bold">{currentUser.firstName} {currentUser.lastName}</h1>
-          {currentUser.isVerified && <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
-        </div>
-        <p className="text-gray-500 text-sm mt-1">{currentUser.bio}</p>
-        <div className="flex gap-2 mt-3">
+  const renderProfile = () => {
+    const userPosts = posts.filter(p => p.author.id === currentUser.id);
+    const userPhotos = userPosts.filter(p => p.mediaUrl && p.mediaType === 'image');
+    
+    const handleRemoveFriend = async (friendId: string) => {
+      try {
+        await api.unfriendUser(friendId);
+        setFriendsList(prev => prev.filter(f => f.id !== friendId));
+        setRealFriendCount(prev => Math.max(0, prev - 1));
+      } catch (error) {
+        console.error('Remove friend error:', error);
+      }
+    };
+    
+    const handleBlockUser = async (userId: string) => {
+      try {
+        await api.blockUser(userId);
+        setFriendsList(prev => prev.filter(f => f.id !== userId));
+        setRealFriendCount(prev => Math.max(0, prev - 1));
+        const blockedRes = await api.getBlockedUsers();
+        if (blockedRes.blockedUsers) {
+          setBlockedUsersList(blockedRes.blockedUsers);
+        }
+      } catch (error) {
+        console.error('Block user error:', error);
+      }
+    };
+    
+    const handleUnblockUser = async (userId: string) => {
+      try {
+        await api.unblockUser(userId);
+        setBlockedUsersList(prev => prev.filter(u => u.id !== userId));
+      } catch (error) {
+        console.error('Unblock user error:', error);
+      }
+    };
+
+    return (
+      <div className="bg-white min-h-screen">
+        <div className="relative h-48 bg-gray-200">
+          {currentUser.coverPhoto && <img src={currentUser.coverPhoto} className="w-full h-full object-cover" alt="" />}
           <button 
-            onClick={() => setShowCreateStory(true)}
-            className="flex-1 h-9 bg-[#1877F2] text-white rounded-lg font-medium text-sm flex items-center justify-center gap-1"
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute bottom-3 right-3 bg-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow-lg"
           >
-            <Plus className="w-4 h-4" /> Add to story
-          </button>
-          <button 
-            onClick={() => setShowEditProfile(true)}
-            className="flex-1 h-9 bg-gray-200 rounded-lg font-medium text-sm flex items-center justify-center gap-1"
-          >
-            <Edit className="w-4 h-4" /> Edit profile
+            <Camera className="w-4 h-4" /> Edit cover photo
           </button>
         </div>
-      </div>
-      <Separator />
-      <div className="p-4 flex gap-6">
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-gray-500" />
-          <span className="font-semibold">{currentUser.friendCount?.toLocaleString()}</span>
-          <span className="text-gray-500">friends</span>
-        </div>
-      </div>
-      <Separator />
-      <div className="p-4 space-y-3">
-        {currentUser.workplace && <div className="flex items-center gap-3"><Briefcase className="w-5 h-5 text-gray-500" /><span className="text-sm">Works at <strong>{currentUser.workplace}</strong></span></div>}
-        {currentUser.education && <div className="flex items-center gap-3"><BookOpen className="w-5 h-5 text-gray-500" /><span className="text-sm">Studied at <strong>{currentUser.education}</strong></span></div>}
-        {currentUser.currentCity && <div className="flex items-center gap-3"><MapPin className="w-5 h-5 text-gray-500" /><span className="text-sm">Lives in <strong>{currentUser.currentCity}</strong></span></div>}
-        {currentUser.hometown && <div className="flex items-center gap-3"><Home className="w-5 h-5 text-gray-500" /><span className="text-sm">From <strong>{currentUser.hometown}</strong></span></div>}
-      </div>
-      <Separator />
-      <div className="p-4">
-        <div className="flex border-b mb-4">
-          {['Posts', 'About', 'Friends', 'Photos'].map((tab, i) => (
-            <button key={tab} className={cn("px-4 py-3 text-sm font-medium relative", i === 0 ? "text-[#1877F2]" : "text-gray-500")}>
-              {tab}
-              {i === 0 && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1877F2]" />}
+        <div className="relative px-4">
+          <div className="relative -mt-20 w-36 h-36">
+            <Avatar className="w-36 h-36 border-4 border-white shadow-lg">
+              <AvatarImage src={currentUser.avatar} className="object-cover" />
+            </Avatar>
+            <button className="absolute bottom-1 right-1 w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center shadow">
+              <Camera className="w-5 h-5 text-gray-600" />
             </button>
-          ))}
-        </div>
-        {posts.filter(p => p.author.id === currentUser.id).map(post => (
-          <PostItem key={post.id} post={post} currentUser={currentUser} onReaction={handleReaction} onComment={handleComment} onShare={handleShare} onSave={handleSave} onDelete={handleDelete} />
-        ))}
-        {posts.filter(p => p.author.id === currentUser.id).length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <p>No posts yet</p>
           </div>
-        )}
+        </div>
+        <div className="px-4 pt-3 pb-4">
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-bold">{currentUser.firstName} {currentUser.lastName}</h1>
+            {currentUser.isVerified && <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
+          </div>
+          <p className="text-gray-500 text-sm mt-1">{currentUser.bio}</p>
+          <div className="flex gap-2 mt-3">
+            <button 
+              onClick={() => setShowCreateStory(true)}
+              className="flex-1 h-9 bg-[#1877F2] text-white rounded-lg font-medium text-sm flex items-center justify-center gap-1"
+            >
+              <Plus className="w-4 h-4" /> Add to story
+            </button>
+            <button 
+              onClick={() => setShowEditProfile(true)}
+              className="flex-1 h-9 bg-gray-200 rounded-lg font-medium text-sm flex items-center justify-center gap-1"
+            >
+              <Edit className="w-4 h-4" /> Edit profile
+            </button>
+          </div>
+        </div>
+        <Separator />
+        <button 
+          onClick={() => {
+            setProfileTab('Friends');
+          }}
+          className="w-full p-4 flex gap-6 hover:bg-gray-50"
+        >
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-gray-500" />
+            <span className="font-semibold">{currentUser.friendCount?.toLocaleString()}</span>
+            <span className="text-gray-500">friends</span>
+          </div>
+        </button>
+        <Separator />
+        <div className="p-4 space-y-3">
+          {currentUser.workplace && <div className="flex items-center gap-3"><Briefcase className="w-5 h-5 text-gray-500" /><span className="text-sm">Works at <strong>{currentUser.workplace}</strong></span></div>}
+          {currentUser.education && <div className="flex items-center gap-3"><BookOpen className="w-5 h-5 text-gray-500" /><span className="text-sm">Studied at <strong>{currentUser.education}</strong></span></div>}
+          {currentUser.currentCity && <div className="flex items-center gap-3"><MapPin className="w-5 h-5 text-gray-500" /><span className="text-sm">Lives in <strong>{currentUser.currentCity}</strong></span></div>}
+          {currentUser.hometown && <div className="flex items-center gap-3"><Home className="w-5 h-5 text-gray-500" /><span className="text-sm">From <strong>{currentUser.hometown}</strong></span></div>}
+        </div>
+        <Separator />
+        <div className="p-4">
+          <div className="flex border-b mb-4">
+            {['Posts', 'About', 'Friends', 'Photos'].map((tab) => (
+              <button 
+                key={tab} 
+                onClick={() => setProfileTab(tab)}
+                className={cn(
+                  "px-4 py-3 text-sm font-medium relative", 
+                  profileTab === tab ? "text-[#1877F2]" : "text-gray-500"
+                )}
+              >
+                {tab}
+                {profileTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1877F2]" />}
+              </button>
+            ))}
+          </div>
+          
+          {/* Posts Tab */}
+          {profileTab === 'Posts' && (
+            <>
+              {userPosts.map(post => (
+                <PostItem key={post.id} post={post} currentUser={currentUser} onReaction={handleReaction} onComment={handleComment} onShare={handleShare} onSave={handleSave} onDelete={handleDelete} />
+              ))}
+              {userPosts.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No posts yet</p>
+                </div>
+              )}
+            </>
+          )}
+          
+          {/* About Tab */}
+          {profileTab === 'About' && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-semibold mb-3">Work</h3>
+                {currentUser.workplace ? (
+                  <div className="flex items-center gap-3">
+                    <Briefcase className="w-5 h-5 text-gray-500" />
+                    <span>Works at <strong>{currentUser.workplace}</strong></span>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No workplace added</p>
+                )}
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-semibold mb-3">Education</h3>
+                {currentUser.education ? (
+                  <div className="flex items-center gap-3">
+                    <BookOpen className="w-5 h-5 text-gray-500" />
+                    <span>Studied at <strong>{currentUser.education}</strong></span>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No education added</p>
+                )}
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-semibold mb-3">Places Lived</h3>
+                {currentUser.currentCity || currentUser.hometown ? (
+                  <div className="space-y-2">
+                    {currentUser.currentCity && (
+                      <div className="flex items-center gap-3">
+                        <MapPin className="w-5 h-5 text-gray-500" />
+                        <span>Lives in <strong>{currentUser.currentCity}</strong></span>
+                      </div>
+                    )}
+                    {currentUser.hometown && (
+                      <div className="flex items-center gap-3">
+                        <Home className="w-5 h-5 text-gray-500" />
+                        <span>From <strong>{currentUser.hometown}</strong></span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No places added</p>
+                )}
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-semibold mb-3">Basic Info</h3>
+                <div className="space-y-2">
+                  {currentUser.gender && (
+                    <div className="flex items-center gap-3">
+                      <User className="w-5 h-5 text-gray-500" />
+                      <span className="capitalize">Gender: <strong>{currentUser.gender}</strong></span>
+                    </div>
+                  )}
+                  {currentUser.dateOfBirth && (
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5 text-gray-500" />
+                      <span>Born on <strong>{new Date(currentUser.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</strong></span>
+                    </div>
+                  )}
+                  {!currentUser.gender && !currentUser.dateOfBirth && (
+                    <p className="text-gray-500 text-sm">No basic info added</p>
+                  )}
+                </div>
+              </div>
+              {currentUser.bio && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h3 className="font-semibold mb-3">Bio</h3>
+                  <p className="text-gray-700">{currentUser.bio}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Friends Tab */}
+          {profileTab === 'Friends' && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold">Friends</h3>
+                <span className="text-gray-500 text-sm">{friendsList.length} friends</span>
+              </div>
+              {friendsList.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {friendsList.map((friend) => (
+                    <div key={friend.id} className="text-center">
+                      <Avatar className="w-full aspect-square rounded-lg">
+                        <AvatarImage src={friend.avatar} className="object-cover" />
+                      </Avatar>
+                      <p className="text-xs font-medium mt-1 truncate">{friend.firstName} {friend.lastName}</p>
+                      <div className="flex gap-1 mt-1">
+                        <button 
+                          onClick={() => handleRemoveFriend(friend.id)}
+                          className="flex-1 text-[10px] py-1 bg-gray-100 rounded text-gray-600 hover:bg-gray-200"
+                        >
+                          Remove
+                        </button>
+                        <button 
+                          onClick={() => handleBlockUser(friend.id)}
+                          className="flex-1 text-[10px] py-1 bg-red-50 rounded text-red-600 hover:bg-red-100"
+                        >
+                          Block
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                  <p>No friends yet</p>
+                </div>
+              )}
+              
+              {blockedUsersList.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="font-semibold mb-3">Blocked Users</h3>
+                  <div className="space-y-2">
+                    {blockedUsersList.map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={user.avatar} />
+                          </Avatar>
+                          <span className="text-sm">{user.firstName} {user.lastName}</span>
+                        </div>
+                        <button 
+                          onClick={() => handleUnblockUser(user.id)}
+                          className="text-xs px-3 py-1 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200"
+                        >
+                          Unblock
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Photos Tab */}
+          {profileTab === 'Photos' && (
+            <div>
+              <h3 className="font-semibold mb-3">Photos</h3>
+              {userPhotos.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1">
+                  {userPhotos.map((post) => (
+                    <div key={post.id} className="aspect-square">
+                      <img src={post.mediaUrl} alt="" className="w-full h-full object-cover rounded" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <ImageIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                  <p>No photos yet</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ============ MAIN RENDER ============
   return (
@@ -2805,6 +3239,11 @@ export default function FacebookClone() {
           {currentPage === 'marketplace' && <div key="marketplace">{renderMarketplace()}</div>}
           {currentPage === 'notifications' && <div key="notifications">{renderNotifications()}</div>}
           {currentPage === 'profile' && <div key="profile">{renderProfile()}</div>}
+          {currentPage === 'events' && <div key="events">{renderEvents()}</div>}
+          {currentPage === 'pages' && <div key="pages">{renderPages()}</div>}
+          {currentPage === 'gaming' && <div key="gaming">{renderGaming()}</div>}
+          {currentPage === 'favorites' && <div key="favorites">{renderFavorites()}</div>}
+          {currentPage === 'groups' && <div key="groups">{renderGroups()}</div>}
         </AnimatePresence>
       </main>
       {renderBottomNav()}
