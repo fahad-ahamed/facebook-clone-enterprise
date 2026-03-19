@@ -1,0 +1,927 @@
+// This is your Prisma schema file,
+// Comprehensive Facebook Clone Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER & AUTHENTICATION ====================
+
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  password            String
+  firstName           String
+  lastName            String
+  username            String?   @unique
+  phone               String?
+  dateOfBirth         DateTime?
+  gender              String?   // male, female, custom
+  customGender        String?
+  pronouns            String?
+  
+  // Profile Info
+  avatar              String?   // profile picture URL
+  coverPhoto          String?
+  bio                 String?
+  currentCity         String?
+  hometown            String?
+  workplace           String?
+  education           String?
+  relationshipStatus  String?   // single, in_relationship, married, etc.
+  website             String?
+  socialLinks         String?   // JSON string for social media links
+  
+  // Account Settings
+  isVerified          Boolean   @default(false)
+  isAdmin             Boolean   @default(false)
+  isOnline            Boolean   @default(false)
+  lastActive          DateTime?
+  language            String    @default("en")
+  theme               String    @default("light")
+  
+  // Privacy Settings
+  profileVisibility   String    @default("public") // public, friends, private
+  postVisibility      String    @default("friends")
+  friendListVisibility String   @default("friends")
+  searchVisibility    Boolean   @default(true)
+  showOnlineStatus    Boolean   @default(true)
+  allowFriendRequests Boolean   @default(true)
+  allowMessageRequests Boolean  @default(true)
+  allowTagging        Boolean   @default(true)
+  
+  // Two-Factor Authentication
+  twoFactorEnabled    Boolean   @default(false)
+  twoFactorSecret     String?
+  
+  // Timestamps
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+  
+  // Relations
+  posts               Post[]
+  comments            Comment[]
+  reactions           Reaction[]
+  sentFriendRequests  FriendRequest[]  @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  friendships1        Friendship[]     @relation("Friendship1")
+  friendships2        Friendship[]     @relation("Friendship2")
+  followers           Follow[]         @relation("Followers")
+  following           Follow[]         @relation("Following")
+  sentMessages        Message[]        @relation("SentMessages")
+  createdConversations Conversation[] @relation("ConversationCreator")
+  conversations1      Conversation[]   @relation("ConversationUser1")
+  conversations2      Conversation[]   @relation("ConversationUser2")
+  conversationMembers ConversationMember[]
+  groupMemberships    GroupMember[]
+  groupAdmins         Group[]          @relation("GroupAdmins")
+  createdGroups       Group[]          @relation("GroupCreator")
+  pages               Page[]
+  pageLikes           PageLike[]
+  pageFollows         PageFollow[]
+  createdEvents       Event[]          @relation("EventCreator")
+  eventRSVPs          EventRSVP[]
+  notifications       Notification[]
+  stories             Story[]
+  reels               Reel[]
+  marketplaceListings MarketplaceListing[]
+  savedPosts          SavedPost[]
+  memories            Memory[]
+  reportedContent     Report[]
+  blocks              Block[]          @relation("BlockedBy")
+  blockedBy           Block[]          @relation("BlockedUsers")
+  likes               Like[]
+  deviceSessions      DeviceSession[]
+  passwordResets      PasswordReset[]
+  verificationTokens  VerificationToken[]
+}
+
+model DeviceSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceName  String
+  deviceType  String   // mobile, desktop, tablet
+  browser     String?
+  os          String?
+  ipAddress   String?
+  location    String?
+  lastActive  DateTime @default(now())
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  type      String   // email_verification, password_reset, two_factor
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ==================== POSTS & FEED ====================
+
+model Post {
+  id            String    @id @default(cuid())
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Content
+  content       String?
+  mediaType     String?   // image, video, gif, none
+  mediaUrl      String?
+  mediaUrls     String?   // JSON array for multiple images/videos
+  linkUrl       String?
+  linkTitle     String?
+  linkDescription String?
+  linkImage     String?
+  
+  // Post Type & Settings
+  postType      String    @default("status") // status, photo, video, link, life_event, check_in
+  visibility    String    @default("friends") // public, friends, private, custom
+  allowComments Boolean   @default(true)
+  allowSharing  Boolean   @default(true)
+  
+  // Feeling & Location
+  feeling       String?   // happy, sad, excited, etc.
+  activity      String?   // watching, listening, playing, etc.
+  activityTarget String?  // what they're watching/listening to
+  location      String?
+  locationId    String?
+  taggedUsers   String?   // JSON array of user IDs
+  
+  // Background & Formatting
+  backgroundColor String?
+  textColor     String?
+  font          String?
+  
+  // Group/Page Post
+  groupId       String?
+  group         Group?    @relation(fields: [groupId], references: [id])
+  pageId        String?
+  page         Page?      @relation(fields: [pageId], references: [id])
+  
+  // Engagement
+  likeCount     Int       @default(0)
+  commentCount  Int       @default(0)
+  shareCount    Int       @default(0)
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  
+  // Relations
+  comments      Comment[]
+  reactions     Reaction[]
+  shares        PostShare[]
+  savedBy       SavedPost[]
+}
+
+model Comment {
+  id          String    @id @default(cuid())
+  postId      String
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId    String?   // for nested comments/replies
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentReplies")
+  
+  content     String
+  mediaUrl    String?   // for image/video comments
+  mediaType   String?
+  
+  likeCount   Int       @default(0)
+  replyCount  Int       @default(0)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  
+  reactions   Reaction[]
+}
+
+model Reaction {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String    // like, love, haha, wow, sad, angry, care
+  
+  // Polymorphic relation - either post or comment
+  postId      String?
+  post        Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId   String?
+  comment     Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+  
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+}
+
+model PostShare {
+  id          String    @id @default(cuid())
+  postId      String
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId      String
+  content     String?
+  createdAt   DateTime  @default(now())
+}
+
+model SavedPost {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId      String
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  collection  String?   // for organizing saved posts
+  createdAt   DateTime  @default(now())
+  
+  @@unique([userId, postId])
+}
+
+model Like {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Polymorphic - can like various content
+  contentType String    // post, comment, page, group, etc.
+  contentId   String
+  
+  createdAt   DateTime  @default(now())
+  
+  @@unique([userId, contentType, contentId])
+}
+
+// ==================== FRIENDS & FOLLOWERS ====================
+
+model Friendship {
+  id          String    @id @default(cuid())
+  user1Id     String
+  user1       User      @relation("Friendship1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id     String
+  user2       User      @relation("Friendship2", fields: [user2Id], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  
+  @@unique([user1Id, user2Id])
+}
+
+model FriendRequest {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId  String
+  receiver    User      @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  status      String    @default("pending") // pending, accepted, rejected, canceled
+  message     String?   // optional message with request
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([senderId, receiverId])
+}
+
+model Follow {
+  id          String    @id @default(cuid())
+  followerId  String
+  follower    User      @relation("Followers", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User      @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  
+  @@unique([followerId, followingId])
+}
+
+model Block {
+  id          String    @id @default(cuid())
+  blockerId   String
+  blocker     User      @relation("BlockedBy", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId   String
+  blocked     User      @relation("BlockedUsers", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  
+  @@unique([blockerId, blockedId])
+}
+
+// ==================== MESSAGES & CHAT ====================
+
+model Conversation {
+  id              String    @id @default(cuid())
+  type            String    @default("direct") // direct, group
+  name            String?   // for group chats
+  avatar          String?   // for group chats
+  createdBy       String?
+  creator         User?     @relation("ConversationCreator", fields: [createdBy], references: [id])
+  
+  // For direct messages
+  user1Id         String?
+  user1           User?     @relation("ConversationUser1", fields: [user1Id], references: [id])
+  user2Id         String?
+  user2           User?     @relation("ConversationUser2", fields: [user2Id], references: [id])
+  
+  lastMessageId   String?
+  lastMessage     Message?  @relation("LastMessage", fields: [lastMessageId], references: [id])
+  lastMessageAt   DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  members         ConversationMember[]
+  messages        Message[]
+}
+
+model ConversationMember {
+  id              String    @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role            String    @default("member") // admin, member
+  lastReadAt      DateTime?
+  muted           Boolean   @default(false)
+  mutedUntil      DateTime?
+  
+  joinedAt        DateTime  @default(now())
+  
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id              String    @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  
+  // Content
+  content         String?
+  messageType     String    @default("text") // text, image, video, audio, file, sticker, gif, location, contact
+  mediaUrl        String?
+  mediaType       String?
+  fileName        String?
+  fileSize        Int?
+  stickerId       String?
+  gifUrl          String?
+  
+  // Reply & Forward
+  replyToId       String?
+  replyTo         Message?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies         Message[] @relation("MessageReplies")
+  forwarded       Boolean   @default(false)
+  forwardedFrom   String?
+  
+  // Status
+  isRead          Boolean   @default(false)
+  readBy          String?   // JSON array of user IDs who read
+  
+  // Reactions
+  reactions       String?   // JSON array of reactions
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
+  
+  // For last message relation
+  lastMessageOf   Conversation[] @relation("LastMessage")
+}
+
+// ==================== GROUPS ====================
+
+model Group {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  coverPhoto      String?
+  avatar          String?
+  
+  // Creator & Admin
+  creatorId       String
+  creator         User      @relation("GroupCreator", fields: [creatorId], references: [id])
+  admins          User[]    @relation("GroupAdmins")
+  
+  // Settings
+  type            String    @default("public") // public, private, secret
+  membershipApproval String @default("anyone") // anyone, admin_approval
+  postApproval    Boolean   @default(false)
+  allowMemberPosts Boolean  @default(true)
+  allowMemberInvites Boolean @default(true)
+  
+  // Category
+  category        String?   // entertainment, sports, business, etc.
+  tags            String?   // JSON array of tags
+  
+  // Location
+  location        String?
+  isLocationBased Boolean   @default(false)
+  
+  // Stats
+  memberCount     Int       @default(0)
+  postCount       Int       @default(0)
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  
+  // Relations
+  members         GroupMember[]
+  posts           Post[]
+  pendingPosts    GroupPost[]
+}
+
+model GroupMember {
+  id              String    @id @default(cuid())
+  groupId         String
+  group           Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role            String    @default("member") // admin, moderator, member
+  status          String    @default("active") // active, muted, banned
+  joinedAt        DateTime  @default(now())
+  
+  // Notifications
+  notifyPosts     Boolean   @default(true)
+  notifyComments  Boolean   @default(true)
+  
+  @@unique([groupId, userId])
+}
+
+model GroupPost {
+  id              String    @id @default(cuid())
+  groupId         String
+  group           Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  postId          String?
+  content         String?
+  mediaUrl        String?
+  status          String    @default("pending") // pending, approved, rejected
+  submittedBy     String
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+}
+
+// ==================== PAGES ====================
+
+model Page {
+  id              String    @id @default(cuid())
+  name            String
+  username        String?   @unique
+  description     String?
+  category        String?
+  subcategories   String?   // JSON array
+  
+  // Media
+  avatar          String?
+  coverPhoto      String?
+  
+  // Owner
+  ownerId         String
+  owner           User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Settings
+  pageType        String    @default("business") // business, community, public_figure, brand, entertainment
+  published       Boolean   @default(true)
+  verified        Boolean   @default(false)
+  
+  // Contact Info
+  phone           String?
+  email           String?
+  website         String?
+  address         String?
+  city            String?
+  country         String?
+  latitude        Float?
+  longitude       Float?
+  
+  // Business Hours
+  businessHours   String?   // JSON object
+  
+  // Social Links
+  socialLinks     String?   // JSON object
+  
+  // Stats
+  likeCount       Int       @default(0)
+  followerCount   Int       @default(0)
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  
+  // Relations
+  posts           Post[]
+  likes           PageLike[]
+  followers       PageFollow[]
+  pageAdmins      PageAdmin[]
+  events          Event[]
+  reviews         PageReview[]
+}
+
+model PageAdmin {
+  id              String    @id @default(cuid())
+  pageId          String
+  page            Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId          String
+  role            String    @default("editor") // owner, admin, editor, moderator, analyst
+  addedAt         DateTime  @default(now())
+  
+  @@unique([pageId, userId])
+}
+
+model PageLike {
+  id              String    @id @default(cuid())
+  pageId          String
+  page            Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  
+  @@unique([pageId, userId])
+}
+
+model PageFollow {
+  id              String    @id @default(cuid())
+  pageId          String
+  page            Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  
+  @@unique([pageId, userId])
+}
+
+model PageReview {
+  id              String    @id @default(cuid())
+  pageId          String
+  page            Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId          String
+  rating          Int       // 1-5
+  content         String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ==================== EVENTS ====================
+
+model Event {
+  id              String    @id @default(cuid())
+  title           String
+  description     String?
+  
+  // Cover Image
+  coverPhoto      String?
+  
+  // Host
+  hostType        String    @default("user") // user, page, group
+  hostId          String
+  creatorId       String
+  creator         User      @relation("EventCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  pageId          String?
+  page            Page?     @relation(fields: [pageId], references: [id])
+  
+  // Date & Time
+  startDate       DateTime
+  endDate         DateTime?
+  isAllDay        Boolean   @default(false)
+  timezone        String?
+  
+  // Location
+  isOnline        Boolean   @default(false)
+  onlineUrl       String?
+  location        String?
+  street          String?
+  city            String?
+  state           String?
+  country         String?
+  latitude        Float?
+  longitude       Float?
+  
+  // Settings
+  visibility      String    @default("public") // public, private, friends
+  allowGuestInvites Boolean @default(true)
+  allowGuestPosts Boolean   @default(false)
+  ticketUrl       String?
+  price           String?
+  
+  // Category
+  category        String?
+  tags            String?   // JSON array
+  
+  // Stats
+  goingCount      Int       @default(0)
+  interestedCount Int       @default(0)
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  
+  // Relations
+  rsvps           EventRSVP[]
+}
+
+model EventRSVP {
+  id              String    @id @default(cuid())
+  eventId         String
+  event           Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          String    @default("going") // going, interested, not_going
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@unique([eventId, userId])
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Type
+  type            String    // friend_request, like, comment, share, mention, tag, message, group_invite, event_invite, page_invite, birthday, memory, etc.
+  
+  // Content
+  title           String?
+  message         String
+  image           String?
+  
+  // Related Content
+  relatedType     String?   // post, comment, user, group, page, event, message
+  relatedId       String?
+  actionUrl       String?
+  
+  // Actor (who triggered the notification)
+  actorId         String?
+  
+  // Status
+  isRead          Boolean   @default(false)
+  readAt          DateTime?
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
+}
+
+// ==================== STORIES & REELS ====================
+
+model Story {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Content
+  mediaType       String    // image, video
+  mediaUrl        String
+  thumbnailUrl    String?
+  
+  // Editing
+  caption         String?
+  stickers        String?   // JSON array of stickers
+  drawings        String?   // JSON array of drawings
+  textOverlays    String?   // JSON array of text
+  filters         String?   // applied filters
+  music           String?   // background music info (JSON)
+  
+  // Privacy
+  visibility      String    @default("friends") // public, friends, custom, close_friends
+  excludedUsers   String?   // JSON array of user IDs to exclude
+  
+  // Stats
+  viewCount       Int       @default(0)
+  reactionCount   Int       @default(0)
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime  // Stories expire after 24 hours
+  deletedAt       DateTime?
+  
+  // Relations
+  viewers         StoryViewer[]
+}
+
+model StoryViewer {
+  id              String    @id @default(cuid())
+  storyId         String
+  story           Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId          String
+  viewedAt        DateTime  @default(now())
+  reaction        String?   // emoji reaction
+  
+  @@unique([storyId, userId])
+}
+
+model Reel {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Content
+  videoUrl        String
+  thumbnailUrl    String?
+  duration        Int?      // in seconds
+  
+  // Editing
+  caption         String?
+  audio           String?   // original or music track info (JSON)
+  effects         String?   // JSON array of applied effects
+  stickers        String?   // JSON array
+  textOverlays    String?   // JSON array
+  drawings        String?   // JSON array
+  
+  // Privacy
+  visibility      String    @default("public") // public, friends, private
+  allowComments   Boolean   @default(true)
+  allowDuets      Boolean   @default(true)
+  allowRemix      Boolean   @default(true)
+  
+  // Stats
+  viewCount       Int       @default(0)
+  likeCount       Int       @default(0)
+  commentCount    Int       @default(0)
+  shareCount      Int       @default(0)
+  saveCount       Int       @default(0)
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
+  
+  // Relations
+  comments        ReelComment[]
+}
+
+model ReelComment {
+  id              String    @id @default(cuid())
+  reelId          String
+  reel            Reel      @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  userId          String
+  content         String
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
+}
+
+// ==================== MARKETPLACE ====================
+
+model MarketplaceListing {
+  id              String    @id @default(cuid())
+  sellerId        String
+  seller          User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  
+  // Basic Info
+  title           String
+  description     String?
+  price           Float
+  currency        String    @default("USD")
+  negotiable      Boolean   @default(false)
+  
+  // Category
+  category        String    // vehicles, electronics, furniture, clothing, etc.
+  subcategory     String?
+  condition       String    @default("used") // new, like_new, used, fair
+  brand           String?
+  
+  // Media
+  images          String    // JSON array of image URLs
+  video           String?
+  
+  // Location
+  location        String
+  city            String?
+  state           String?
+  country         String?
+  latitude        Float?
+  longitude       Float?
+  
+  // Status
+  status          String    @default("available") // available, pending, sold, expired, deleted
+  isFeatured      Boolean   @default(false)
+  
+  // Stats
+  viewCount       Int       @default(0)
+  saveCount       Int       @default(0)
+  inquiryCount    Int       @default(0)
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  soldAt          DateTime?
+  deletedAt       DateTime?
+  
+  // Relations
+  inquiries       MarketplaceInquiry[]
+}
+
+model MarketplaceInquiry {
+  id              String    @id @default(cuid())
+  listingId       String
+  listing         MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId         String
+  message         String
+  status          String    @default("active") // active, closed
+  createdAt       DateTime  @default(now())
+}
+
+// ==================== MEMORIES ====================
+
+model Memory {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Source
+  sourceType      String    // post, photo, video, friendship
+  sourceId        String
+  originalDate    DateTime  // when the original content was created
+  yearsAgo        Int
+  
+  // Content Preview
+  preview         String?   // preview text or thumbnail
+  
+  // Notification
+  notifiedAt      DateTime?
+  viewedAt        DateTime?
+  
+  createdAt       DateTime  @default(now())
+}
+
+// ==================== REPORTS ====================
+
+model Report {
+  id              String    @id @default(cuid())
+  reporterId      String
+  reporter        User      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  
+  // Reported Content
+  reportType      String    // post, comment, user, page, group, message, marketplace, event
+  reportedId      String
+  reason          String    // spam, harassment, hate_speech, violence, nudity, fake_account, etc.
+  description     String?
+  
+  // Status
+  status          String    @default("pending") // pending, reviewing, resolved, dismissed
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  action          String?   // what action was taken
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ==================== ADMIN MODELS ====================
+
+model AdminLog {
+  id              String    @id @default(cuid())
+  adminId         String
+  action          String
+  targetType      String?   // user, post, page, group, etc.
+  targetId        String?
+  details         String?   // JSON
+  ipAddress       String?
+  createdAt       DateTime  @default(now())
+}
+
+model SystemSetting {
+  id              String    @id @default(cuid())
+  key             String    @unique
+  value           String
+  description     String?
+  updatedAt       DateTime  @updatedAt
+}
+
+model Announcement {
+  id              String    @id @default(cuid())
+  title           String
+  content         String
+  type            String    @default("info") // info, warning, maintenance
+  isActive        Boolean   @default(true)
+  startDate       DateTime?
+  endDate         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
