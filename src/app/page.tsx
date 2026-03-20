@@ -20,7 +20,7 @@ import {
   UserPlus, UserMinus, Camera, Edit, Trash2, Phone, Clock, Star, Gift, Music,
   Volume2, VolumeX, Shield, Key, Monitor, Globe2, MessageSquare,
   BookOpen, Radio, HeartHandshake, Loader2, Film, Mail, ArrowLeft, Home as HomeIcon,
-  AtSign
+  AtSign, UsersRound, Copy, Link2, Wifi, WifiOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as api from '@/lib/api';
@@ -213,13 +213,401 @@ function ReactionPicker({ onSelect, selectedReaction }: {
   );
 }
 
+// ============ SHARE MODAL ============
+interface ShareModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  post: Post;
+  currentUser: UserType;
+  onShare: (postId: string, message: string, shareType: string) => void;
+}
+
+function ShareModal({ isOpen, onClose, post, currentUser, onShare }: ShareModalProps) {
+  const [shareMessage, setShareMessage] = useState('');
+  const [shareType, setShareType] = useState<'timeline' | 'message' | 'group'>('timeline');
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = () => {
+    onShare(post.id, shareMessage, shareType);
+    setShareMessage('');
+    onClose();
+  };
+
+  const handleCopyLink = () => {
+    const link = `${window.location.origin}/post/${post.id}`;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md p-0 gap-0">
+        <DialogHeader className="p-4 border-b">
+          <DialogTitle className="text-center">Share</DialogTitle>
+        </DialogHeader>
+        
+        <div className="p-4">
+          {/* Share Options */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <button
+              onClick={() => setShareType('timeline')}
+              className={cn(
+                "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                shareType === 'timeline' ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:bg-gray-50"
+              )}
+            >
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <User className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-xs font-medium">Your Timeline</span>
+            </button>
+            
+            <button
+              onClick={() => setShareType('message')}
+              className={cn(
+                "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                shareType === 'message' ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:bg-gray-50"
+              )}
+            >
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <MessageCircle className="w-5 h-5 text-purple-600" />
+              </div>
+              <span className="text-xs font-medium">In a Message</span>
+            </button>
+            
+            <button
+              onClick={() => setShareType('group')}
+              className={cn(
+                "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                shareType === 'group' ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:bg-gray-50"
+              )}
+            >
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <UsersRound className="w-5 h-5 text-green-600" />
+              </div>
+              <span className="text-xs font-medium">To a Group</span>
+            </button>
+          </div>
+
+          {/* Write Something */}
+          <div className="flex gap-2 mb-4">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={currentUser.avatar} />
+            </Avatar>
+            <Textarea
+              placeholder="Write something about this..."
+              value={shareMessage}
+              onChange={(e) => setShareMessage(e.target.value)}
+              className="flex-1 min-h-[80px] resize-none"
+            />
+          </div>
+
+          {/* Post Preview */}
+          <div className="bg-gray-50 rounded-xl p-3 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={post.author.avatar} />
+              </Avatar>
+              <div>
+                <p className="font-semibold text-sm">{post.author.firstName} {post.author.lastName}</p>
+              </div>
+            </div>
+            {post.content && (
+              <p className="text-sm text-gray-600 line-clamp-2">{post.content}</p>
+            )}
+            {post.mediaUrl && (
+              <div className="mt-2 h-24 rounded-lg overflow-hidden bg-gray-200">
+                {post.mediaType === 'video' ? (
+                  <video src={post.mediaUrl} className="w-full h-full object-cover" />
+                ) : (
+                  <img src={post.mediaUrl} alt="" className="w-full h-full object-cover" />
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Copy Link */}
+          <button
+            onClick={handleCopyLink}
+            className="w-full flex items-center justify-center gap-2 p-3 border rounded-xl hover:bg-gray-50 mb-4"
+          >
+            {copied ? <Check className="w-5 h-5 text-green-600" /> : <Link2 className="w-5 h-5 text-gray-600" />}
+            <span className="font-medium text-sm">{copied ? 'Link copied!' : 'Copy link'}</span>
+          </button>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+            <Button onClick={handleShare} className="flex-1 bg-[#1877F2] hover:bg-[#166FE5]">
+              {shareType === 'timeline' ? 'Share Now' : shareType === 'message' ? 'Send' : 'Post'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============ REACTION VIEWERS DIALOG ============
+interface ReactionUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatar?: string;
+  reactionType: string;
+}
+
+interface ReactionViewersDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  postId: string;
+  reactionCounts: {
+    like: number;
+    love: number;
+    haha: number;
+    wow: number;
+    sad: number;
+    angry: number;
+  };
+}
+
+function ReactionViewersDialog({ isOpen, onClose, postId, reactionCounts }: ReactionViewersDialogProps) {
+  const [activeTab, setActiveTab] = useState('all');
+  const [reactionUsers, setReactionUsers] = useState<ReactionUser[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const totalReactions = Object.values(reactionCounts).reduce((a, b) => a + b, 0);
+
+  // Generate mock reaction users based on counts
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    // Use setTimeout to avoid synchronous setState in effect
+    const timeoutId = setTimeout(() => {
+      setLoading(true);
+      // Simulate API call - in real app, fetch from API
+      const mockUsers: ReactionUser[] = [];
+      const names = ['John Doe', 'Jane Smith', 'Bob Wilson', 'Alice Brown', 'Charlie Davis', 'Emma Johnson', 'Michael Lee', 'Sarah Miller'];
+      
+      Object.entries(reactionCounts).forEach(([type, count]) => {
+        for (let i = 0; i < Math.min(count, 5); i++) {
+          const name = names[Math.floor(Math.random() * names.length)];
+          mockUsers.push({
+            id: `user-${type}-${i}`,
+            firstName: name.split(' ')[0],
+            lastName: name.split(' ')[1],
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+            reactionType: type
+          });
+        }
+      });
+      
+      setReactionUsers(mockUsers);
+      setLoading(false);
+    }, 0);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isOpen, reactionCounts]);
+
+  const filteredUsers = activeTab === 'all' 
+    ? reactionUsers 
+    : reactionUsers.filter(u => u.reactionType === activeTab);
+
+  const tabs = [
+    { key: 'all', label: 'All', count: totalReactions },
+    { key: 'like', label: '👍', count: reactionCounts.like },
+    { key: 'love', label: '❤️', count: reactionCounts.love },
+    { key: 'haha', label: '😂', count: reactionCounts.haha },
+    { key: 'wow', label: '😮', count: reactionCounts.wow },
+    { key: 'sad', label: '😢', count: reactionCounts.sad },
+    { key: 'angry', label: '😡', count: reactionCounts.angry },
+  ];
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md p-0 gap-0">
+        <DialogHeader className="p-4 border-b">
+          <DialogTitle className="text-center">Reactions</DialogTitle>
+        </DialogHeader>
+        
+        {/* Tabs */}
+        <div className="flex overflow-x-auto border-b">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "flex items-center gap-1 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors",
+                activeTab === tab.key 
+                  ? "border-[#1877F2] text-[#1877F2]" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              )}
+            >
+              <span>{tab.label}</span>
+              <span className="text-xs text-gray-400">({tab.count})</span>
+            </button>
+          ))}
+        </div>
+
+        {/* User List */}
+        <div className="max-h-80 overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-[#1877F2]" />
+            </div>
+          ) : filteredUsers.length > 0 ? (
+            <div className="p-2">
+              {filteredUsers.map((user) => (
+                <div key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={user.avatar} />
+                    <AvatarFallback>{user.firstName.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{user.firstName} {user.lastName}</p>
+                  </div>
+                  <span className="text-lg">
+                    {reactions.find(r => r.type === user.reactionType)?.icon}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No reactions yet</p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============ ENHANCED VIDEO PLAYER ============
+interface VideoPlayerProps {
+  src: string;
+  className?: string;
+}
+
+function VideoPlayer({ src, className }: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [quality, setQuality] = useState<'auto' | '1080p' | '720p' | '480p' | '360p'>('auto');
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [networkSpeed, setNetworkSpeed] = useState<string>('Unknown');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+
+  // Detect network speed
+  useEffect(() => {
+    const detectNetwork = () => {
+      const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+      if (connection) {
+        const downlink = connection.downlink; // Mbps
+        if (downlink >= 10) {
+          setNetworkSpeed('Fast (4G/WiFi)');
+          if (quality === 'auto') setQuality('720p');
+        } else if (downlink >= 5) {
+          setNetworkSpeed('Good (4G)');
+          if (quality === 'auto') setQuality('480p');
+        } else if (downlink >= 1) {
+          setNetworkSpeed('Slow (3G)');
+          if (quality === 'auto') setQuality('360p');
+        } else {
+          setNetworkSpeed('Very Slow');
+          if (quality === 'auto') setQuality('360p');
+        }
+      } else {
+        setNetworkSpeed('Unknown');
+      }
+    };
+
+    detectNetwork();
+
+    const connection = (navigator as any).connection;
+    if (connection) {
+      connection.addEventListener('change', detectNetwork);
+      return () => connection.removeEventListener('change', detectNetwork);
+    }
+  }, [quality]);
+
+  const qualities = [
+    { key: 'auto', label: 'Auto' },
+    { key: '1080p', label: '1080p HD' },
+    { key: '720p', label: '720p HD' },
+    { key: '480p', label: '480p' },
+    { key: '360p', label: '360p' },
+  ];
+
+  return (
+    <div className="relative group">
+      <video
+        ref={videoRef}
+        src={src}
+        controls
+        className={className}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onVolumeChange={() => {
+          if (videoRef.current) {
+            setIsMuted(videoRef.current.muted);
+          }
+        }}
+      />
+      
+      {/* Quality Selector Overlay */}
+      <div className="absolute bottom-12 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="relative">
+          <button
+            onClick={() => setShowQualityMenu(!showQualityMenu)}
+            className="flex items-center gap-1 px-2 py-1 bg-black/70 rounded text-white text-xs font-medium hover:bg-black/80"
+          >
+            <Wifi className="w-3 h-3" />
+            {quality === 'auto' ? 'Auto' : quality}
+          </button>
+          
+          {showQualityMenu && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute bottom-full right-0 mb-1 bg-black/90 rounded-lg py-1 min-w-[120px]"
+            >
+              {/* Network Speed Indicator */}
+              <div className="px-3 py-1 text-xs text-gray-400 border-b border-gray-700 mb-1">
+                Network: {networkSpeed}
+              </div>
+              
+              {qualities.map((q) => (
+                <button
+                  key={q.key}
+                  onClick={() => {
+                    setQuality(q.key as any);
+                    setShowQualityMenu(false);
+                  }}
+                  className={cn(
+                    "w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10",
+                    quality === q.key && "bg-blue-500/30"
+                  )}
+                >
+                  {q.label}
+                  {q.key === 'auto' && ' (Adaptive)'}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============ POST ITEM ============
 function PostItem({ post, currentUser, onReaction, onComment, onShare, onSave, onDelete }: { 
   post: Post; 
   currentUser: UserType;
   onReaction: (postId: string, reaction: string) => void;
   onComment: (postId: string, comment: string) => void;
-  onShare: (postId: string) => void;
+  onShare: (postId: string, message?: string, shareType?: string) => void;
   onSave: (postId: string) => void;
   onDelete: (postId: string) => void;
 }) {
@@ -239,6 +627,8 @@ function PostItem({ post, currentUser, onReaction, onComment, onShare, onSave, o
   });
   const [showMenu, setShowMenu] = useState(false);
   const [newComments, setNewComments] = useState<CommentType[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showReactionViewers, setShowReactionViewers] = useState(false);
 
   const totalReactions = counts.like + counts.love + counts.haha + counts.wow + counts.sad + counts.angry;
 
@@ -370,9 +760,8 @@ function PostItem({ post, currentUser, onReaction, onComment, onShare, onSave, o
       {post.mediaUrl && (
         <div className="relative bg-black">
           {post.mediaType === 'video' ? (
-            <video
+            <VideoPlayer
               src={post.mediaUrl}
-              controls
               className="w-full max-h-[500px] object-cover"
             />
           ) : (
@@ -387,7 +776,13 @@ function PostItem({ post, currentUser, onReaction, onComment, onShare, onSave, o
       
       {/* Post Stats */}
       <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-1 cursor-pointer hover:underline">
+        <button 
+          onClick={() => totalReactions > 0 && setShowReactionViewers(true)}
+          className={cn(
+            "flex items-center gap-1",
+            totalReactions > 0 && "cursor-pointer hover:underline"
+          )}
+        >
           {totalReactions > 0 && (
             <>
               <div className="flex -space-x-0.5">
@@ -401,12 +796,12 @@ function PostItem({ post, currentUser, onReaction, onComment, onShare, onSave, o
               <span className="text-sm text-gray-500 ml-1">{totalReactions.toLocaleString()}</span>
             </>
           )}
-        </div>
+        </button>
         <div className="flex gap-3 text-sm text-gray-500">
           <button onClick={() => setShowComments(!showComments)} className="hover:underline">
             {counts.comment} comment{counts.comment !== 1 ? 's' : ''}
           </button>
-          <button onClick={() => { setCounts(prev => ({ ...prev, share: prev.share + 1 })); onShare(post.id); }} className="hover:underline">
+          <button onClick={() => setShowShareModal(true)} className="hover:underline">
             {counts.share} share{counts.share !== 1 ? 's' : ''}
           </button>
         </div>
@@ -425,7 +820,7 @@ function PostItem({ post, currentUser, onReaction, onComment, onShare, onSave, o
           <span className="font-medium text-sm">Comment</span>
         </button>
         <button
-          onClick={() => { setCounts(prev => ({ ...prev, share: prev.share + 1 })); onShare(post.id); }}
+          onClick={() => setShowShareModal(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100"
         >
           <Share2 className="w-5 h-5" />
@@ -487,6 +882,33 @@ function PostItem({ post, currentUser, onReaction, onComment, onShare, onSave, o
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        post={post}
+        currentUser={currentUser}
+        onShare={(postId, message, shareType) => {
+          setCounts(prev => ({ ...prev, share: prev.share + 1 }));
+          onShare(postId, message, shareType);
+        }}
+      />
+
+      {/* Reaction Viewers Dialog */}
+      <ReactionViewersDialog
+        isOpen={showReactionViewers}
+        onClose={() => setShowReactionViewers(false)}
+        postId={post.id}
+        reactionCounts={{
+          like: counts.like,
+          love: counts.love,
+          haha: counts.haha,
+          wow: counts.wow,
+          sad: counts.sad,
+          angry: counts.angry,
+        }}
+      />
     </motion.div>
   );
 }
@@ -1889,6 +2311,7 @@ export default function FacebookClone() {
   const [postMediaUrl, setPostMediaUrl] = useState('');
   const [postMediaType, setPostMediaType] = useState<'image' | 'video'>('image');
   const [postMediaPreview, setPostMediaPreview] = useState('');
+  const [postFileSize, setPostFileSize] = useState(0);
   const postFileInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
@@ -2106,9 +2529,9 @@ export default function FacebookClone() {
     }
   };
 
-  const handleShare = async (postId: string) => {
+  const handleShare = async (postId: string, message?: string, shareType?: string) => {
     try {
-      await api.sharePost(postId);
+      await api.sharePost(postId, message, shareType as 'timeline' | 'message' | undefined);
       refreshPosts();
     } catch (error) {
       console.error('Share error:', error);
@@ -2135,6 +2558,10 @@ export default function FacebookClone() {
   const handlePostFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Store file size for display
+      setPostFileSize(file.size);
+      
+      // Read file with original quality (no compression)
       const reader = new FileReader();
       reader.onload = () => {
         const url = reader.result as string;
@@ -2142,6 +2569,7 @@ export default function FacebookClone() {
         setPostMediaUrl(url);
         setPostMediaType(file.type.startsWith('video') ? 'video' : 'image');
       };
+      // Read as data URL to keep original quality
       reader.readAsDataURL(file);
     }
   };
@@ -2161,6 +2589,7 @@ export default function FacebookClone() {
         setPostFeeling(null);
         setPostMediaUrl('');
         setPostMediaPreview('');
+        setPostFileSize(0);
         setShowCreatePost(false);
         refreshPosts();
       } catch (error) {
@@ -3331,95 +3760,111 @@ export default function FacebookClone() {
 
   const renderCreatePostModal = () => (
     <Dialog open={showCreatePost} onOpenChange={setShowCreatePost}>
-      <DialogContent className="max-w-lg p-0 gap-0 max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="p-4 border-b">
+      <DialogContent className="max-w-lg p-0 gap-0 max-h-[90vh] flex flex-col">
+        <DialogHeader className="p-4 border-b shrink-0">
           <DialogTitle className="text-center">Create post</DialogTitle>
         </DialogHeader>
-        <div className="p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <Avatar className="w-10 h-10"><AvatarImage src={currentUser.avatar} /></Avatar>
-            <div>
-              <p className="font-semibold">{currentUser.firstName} {currentUser.lastName}</p>
-              <button className="flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded-lg">
-                {postVisibility === 'public' ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                <span className="capitalize">{postVisibility}</span>
-                <ChevronDown className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-          <Textarea
-            placeholder={`What's on your mind, ${currentUser.firstName}?`}
-            value={postContent}
-            onChange={(e) => setPostContent(e.target.value)}
-            className="min-h-32 border-0 text-lg resize-none focus:ring-0 p-0"
-            autoFocus
-          />
-          {postFeeling && (
-            <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1.5 w-fit mb-2 mt-2">
-              <span className="text-lg">{feelings.find(f => f.label === postFeeling)?.emoji}</span>
-              <span className="text-sm">{postFeeling}</span>
-              <button onClick={() => setPostFeeling(null)}><X className="w-4 h-4 text-gray-500" /></button>
-            </div>
-          )}
-          
-          {/* Media Preview */}
-          {postMediaPreview && (
-            <div className="relative mt-3 rounded-xl overflow-hidden">
-              {postMediaType === 'video' ? (
-                <video src={postMediaPreview} controls className="w-full max-h-60 object-cover" />
-              ) : (
-                <img src={postMediaPreview} alt="" className="w-full max-h-60 object-cover" />
-              )}
-              <button
-                onClick={() => { setPostMediaPreview(''); setPostMediaUrl(''); }}
-                className="absolute top-2 right-2 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center"
-              >
-                <X className="w-4 h-4 text-white" />
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center justify-between px-4 py-3 mx-4 mb-4 border rounded-xl">
-          <span className="font-medium text-sm">Add to your post</span>
-          <div className="flex gap-1">
-            <input
-              ref={postFileInputRef}
-              type="file"
-              accept="image/*,video/*"
-              onChange={handlePostFileSelect}
-              className="hidden"
-            />
-            <button 
-              onClick={() => postFileInputRef.current?.click()} 
-              className="p-2 rounded-full hover:bg-gray-100"
-            >
-              <ImageIcon className="w-6 h-6 text-green-500" />
-            </button>
-            <button onClick={() => setShowFeelingPicker(!showFeelingPicker)} className="p-2 rounded-full hover:bg-gray-100">
-              <Smile className="w-6 h-6 text-yellow-500" />
-            </button>
-            <button className="p-2 rounded-full hover:bg-gray-100">
-              <MapPin className="w-6 h-6 text-red-500" />
-            </button>
-          </div>
-        </div>
-        {showFeelingPicker && (
-          <div className="px-4 mb-4">
-            <div className="grid grid-cols-3 gap-2 p-3 bg-gray-50 rounded-xl">
-              {feelings.map((feeling) => (
-                <button
-                  key={feeling.label}
-                  onClick={() => { setPostFeeling(feeling.label); setShowFeelingPicker(false); }}
-                  className={cn("flex items-center gap-2 p-2 rounded-lg text-sm", postFeeling === feeling.label ? "bg-blue-100 text-blue-600" : "hover:bg-gray-100")}
-                >
-                  <span className="text-lg">{feeling.emoji}</span>
-                  <span className="truncate">{feeling.label.replace('feeling ', '')}</span>
+        
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <Avatar className="w-10 h-10"><AvatarImage src={currentUser.avatar} /></Avatar>
+              <div>
+                <p className="font-semibold">{currentUser.firstName} {currentUser.lastName}</p>
+                <button className="flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded-lg">
+                  {postVisibility === 'public' ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                  <span className="capitalize">{postVisibility}</span>
+                  <ChevronDown className="w-3 h-3" />
                 </button>
-              ))}
+              </div>
+            </div>
+            <Textarea
+              placeholder={`What's on your mind, ${currentUser.firstName}?`}
+              value={postContent}
+              onChange={(e) => setPostContent(e.target.value)}
+              className="min-h-32 border-0 text-lg resize-none focus:ring-0 p-0"
+              autoFocus
+            />
+            {postFeeling && (
+              <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1.5 w-fit mb-2 mt-2">
+                <span className="text-lg">{feelings.find(f => f.label === postFeeling)?.emoji}</span>
+                <span className="text-sm">{postFeeling}</span>
+                <button onClick={() => setPostFeeling(null)}><X className="w-4 h-4 text-gray-500" /></button>
+              </div>
+            )}
+            
+            {/* Media Preview with File Size */}
+            {postMediaPreview && (
+              <div className="relative mt-3 rounded-xl overflow-hidden">
+                {postMediaType === 'video' ? (
+                  <video src={postMediaPreview} controls className="w-full max-h-48 object-cover" />
+                ) : (
+                  <img src={postMediaPreview} alt="" className="w-full max-h-48 object-cover" />
+                )}
+                <button
+                  onClick={() => { setPostMediaPreview(''); setPostMediaUrl(''); setPostFileSize(0); }}
+                  className="absolute top-2 right-2 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center"
+                >
+                  <X className="w-4 h-4 text-white" />
+                </button>
+                {/* File Size Display */}
+                {postFileSize > 0 && (
+                  <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                    {postFileSize < 1024 * 1024 
+                      ? `${(postFileSize / 1024).toFixed(1)} KB` 
+                      : `${(postFileSize / (1024 * 1024)).toFixed(1)} MB`}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center justify-between px-4 py-3 mx-4 mb-2 border rounded-xl">
+            <span className="font-medium text-sm">Add to your post</span>
+            <div className="flex gap-1">
+              <input
+                ref={postFileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                onChange={handlePostFileSelect}
+                className="hidden"
+              />
+              <button 
+                onClick={() => postFileInputRef.current?.click()} 
+                className="p-2 rounded-full hover:bg-gray-100"
+              >
+                <ImageIcon className="w-6 h-6 text-green-500" />
+              </button>
+              <button onClick={() => setShowFeelingPicker(!showFeelingPicker)} className="p-2 rounded-full hover:bg-gray-100">
+                <Smile className="w-6 h-6 text-yellow-500" />
+              </button>
+              <button className="p-2 rounded-full hover:bg-gray-100">
+                <MapPin className="w-6 h-6 text-red-500" />
+              </button>
             </div>
           </div>
-        )}
-        <div className="px-4 pb-4">
+          
+          {showFeelingPicker && (
+            <div className="px-4 pb-4">
+              <div className="grid grid-cols-3 gap-2 p-3 bg-gray-50 rounded-xl">
+                {feelings.map((feeling) => (
+                  <button
+                    key={feeling.label}
+                    onClick={() => { setPostFeeling(feeling.label); setShowFeelingPicker(false); }}
+                    className={cn("flex items-center gap-2 p-2 rounded-lg text-sm", postFeeling === feeling.label ? "bg-blue-100 text-blue-600" : "hover:bg-gray-100")}
+                  >
+                    <span className="text-lg">{feeling.emoji}</span>
+                    <span className="truncate">{feeling.label.replace('feeling ', '')}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Sticky Footer */}
+        <div className="p-4 border-t shrink-0 bg-white">
           <Button 
             onClick={handleCreatePost} 
             disabled={!postContent.trim() && !postMediaUrl} 
