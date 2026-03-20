@@ -31,7 +31,10 @@ export async function GET(request: NextRequest) {
         username: true,
         avatar: true,
         currentCity: true,
-        isVerified: true
+        country: true,
+        isVerified: true,
+        badgeType: true,
+        isOnline: true
       }
     });
 
@@ -68,7 +71,9 @@ export async function PUT(request: NextRequest) {
       avatar,
       coverPhoto,
       language,
-      theme
+      theme,
+      country,
+      isProfileLocked
     } = body;
 
     // Check username uniqueness if username is being changed
@@ -102,7 +107,9 @@ export async function PUT(request: NextRequest) {
         avatar: avatar || undefined,
         coverPhoto: coverPhoto || undefined,
         language: language || undefined,
-        theme: theme || undefined
+        theme: theme || undefined,
+        country: country || undefined,
+        isProfileLocked: isProfileLocked !== undefined ? isProfileLocked : undefined
       },
       select: {
         id: true,
@@ -121,8 +128,11 @@ export async function PUT(request: NextRequest) {
         phone: true,
         gender: true,
         dateOfBirth: true,
+        country: true,
         isVerified: true,
         isAdmin: true,
+        isProfileLocked: true,
+        badgeType: true,
         language: true,
         theme: true
       }

@@ -20,7 +20,7 @@ import {
   UserPlus, UserMinus, Camera, Edit, Trash2, Phone, Clock, Star, Gift, Music,
   Volume2, VolumeX, Shield, Key, Monitor, Globe2, MessageSquare,
   BookOpen, Radio, HeartHandshake, Loader2, Film, Mail, ArrowLeft, Home as HomeIcon,
-  AtSign, UsersRound, Copy, Link2, Wifi, WifiOff
+  AtSign, UsersRound, Copy, Link2, Wifi, WifiOff, UserCheck, BadgeCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as api from '@/lib/api';
@@ -42,8 +42,11 @@ interface UserType {
   relationshipStatus?: string;
   dateOfBirth?: string;
   gender?: string;
+  country?: string;
   isVerified: boolean;
   isOnline: boolean;
+  isProfileLocked?: boolean;
+  badgeType?: string | null;
   friendCount?: number;
   followerCount?: number;
   followingCount?: number;
@@ -154,6 +157,26 @@ const feelings = [
   { emoji: '😎', label: 'feeling cool' },
   { emoji: '🙏', label: 'feeling blessed' },
   { emoji: '🥳', label: 'feeling excited' },
+];
+
+// Common countries list
+const COUNTRIES = [
+  'Afghanistan', 'Albania', 'Algeria', 'Argentina', 'Australia', 'Austria', 'Bangladesh', 
+  'Belgium', 'Brazil', 'Canada', 'China', 'Colombia', 'Egypt', 'France', 'Germany', 
+  'Greece', 'India', 'Indonesia', 'Iran', 'Iraq', 'Italy', 'Japan', 'Kenya', 'Malaysia', 
+  'Mexico', 'Morocco', 'Netherlands', 'Nigeria', 'Pakistan', 'Philippines', 'Poland', 
+  'Portugal', 'Russia', 'Saudi Arabia', 'Singapore', 'South Africa', 'South Korea', 
+  'Spain', 'Sweden', 'Switzerland', 'Thailand', 'Turkey', 'Ukraine', 'United Arab Emirates', 
+  'United Kingdom', 'United States', 'Vietnam'
+].sort();
+
+// Post visibility options
+const VISIBILITY_OPTIONS = [
+  { value: 'public', label: 'Public', icon: Globe, description: 'Anyone can see this post' },
+  { value: 'friends', label: 'Friends', icon: Users, description: 'Your friends can see this post' },
+  { value: 'friends_except', label: 'Friends except...', icon: UsersRound, description: 'Don\'t show to some friends' },
+  { value: 'specific_friends', label: 'Specific friends', icon: UserCheck, description: 'Only show to select friends' },
+  { value: 'private', label: 'Only me', icon: Lock, description: 'Only you can see this post' },
 ];
 
 // ============ REACTION PICKER ============
@@ -1258,6 +1281,7 @@ function AuthScreen({ onLogin, onRegister, loading }: AuthScreenProps) {
   const [lastName, setLastName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [gender, setGender] = useState('');
+  const [country, setCountry] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   
@@ -1309,7 +1333,7 @@ function AuthScreen({ onLogin, onRegister, loading }: AuthScreenProps) {
         return;
       }
       
-      const userData = { email, password, firstName, lastName, dateOfBirth, gender };
+      const userData = { email, password, firstName, lastName, dateOfBirth, gender, country };
       
       try {
         const res = await fetch('/api/auth/register', {
@@ -1774,6 +1798,20 @@ function AuthScreen({ onLogin, onRegister, loading }: AuthScreenProps) {
                     <option value="custom">Custom</option>
                   </select>
                 </div>
+                
+                <div className="mb-3">
+                  <label className="text-xs text-gray-500 mb-1 block">Country</label>
+                  <select
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select country</option>
+                    {COUNTRIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
               </>
             )}
             
@@ -1857,6 +1895,7 @@ function EditProfileModal({ user, isOpen, onClose, onSave }: {
   const [education, setEducation] = useState(user.education || '');
   const [phone, setPhone] = useState(user.phone || '');
   const [gender, setGender] = useState(user.gender || '');
+  const [country, setCountry] = useState(user.country || '');
   const [dateOfBirth, setDateOfBirth] = useState(user.dateOfBirth || '');
   const [avatar, setAvatar] = useState(user.avatar || '');
   const [coverPhoto, setCoverPhoto] = useState(user.coverPhoto || '');
@@ -1942,6 +1981,7 @@ function EditProfileModal({ user, isOpen, onClose, onSave }: {
         education,
         phone,
         gender,
+        country,
         dateOfBirth,
         avatar,
         coverPhoto
@@ -2099,6 +2139,19 @@ function EditProfileModal({ user, isOpen, onClose, onSave }: {
               <div>
                 <label className="text-sm text-gray-500 mb-1 block">Hometown</label>
                 <Input value={hometown} onChange={(e) => setHometown(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 mb-1 block">Country</label>
+                <select
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select country</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
             </>
           )}
@@ -2306,7 +2359,8 @@ export default function FacebookClone() {
   // Create Post States
   const [postContent, setPostContent] = useState('');
   const [postFeeling, setPostFeeling] = useState<string | null>(null);
-  const [postVisibility, setPostVisibility] = useState<'public' | 'friends' | 'private'>('public');
+  const [postVisibility, setPostVisibility] = useState<string>('public');
+  const [showVisibilityDropdown, setShowVisibilityDropdown] = useState(false);
   const [showFeelingPicker, setShowFeelingPicker] = useState(false);
   const [postMediaUrl, setPostMediaUrl] = useState('');
   const [postMediaType, setPostMediaType] = useState<'image' | 'video'>('image');
@@ -3772,11 +3826,53 @@ export default function FacebookClone() {
               <Avatar className="w-10 h-10"><AvatarImage src={currentUser.avatar} /></Avatar>
               <div>
                 <p className="font-semibold">{currentUser.firstName} {currentUser.lastName}</p>
-                <button className="flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded-lg">
-                  {postVisibility === 'public' ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                  <span className="capitalize">{postVisibility}</span>
-                  <ChevronDown className="w-3 h-3" />
-                </button>
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowVisibilityDropdown(!showVisibilityDropdown)}
+                    className="flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded-lg hover:bg-gray-200"
+                  >
+                    {postVisibility === 'public' ? <Globe className="w-3 h-3" /> : 
+                     postVisibility === 'friends' ? <Users className="w-3 h-3" /> :
+                     postVisibility === 'friends_except' ? <UsersRound className="w-3 h-3" /> :
+                     postVisibility === 'specific_friends' ? <UserCheck className="w-3 h-3" /> :
+                     <Lock className="w-3 h-3" />}
+                    <span className="capitalize">{VISIBILITY_OPTIONS.find(o => o.value === postVisibility)?.label || postVisibility}</span>
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  
+                  {showVisibilityDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-xl border py-2 w-64 z-50"
+                    >
+                      {VISIBILITY_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setPostVisibility(option.value);
+                            setShowVisibilityDropdown(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50",
+                            postVisibility === option.value && "bg-blue-50"
+                          )}
+                        >
+                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                            <option.icon className="w-4 h-4 text-gray-600" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-medium text-sm">{option.label}</p>
+                            <p className="text-xs text-gray-500">{option.description}</p>
+                          </div>
+                          {postVisibility === option.value && (
+                            <Check className="w-4 h-4 text-blue-600 ml-auto" />
+                          )}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
               </div>
             </div>
             <Textarea

@@ -20,10 +20,13 @@ A comprehensive Facebook clone built with Next.js 16, TypeScript, Tailwind CSS 4
 
 ### User Profile
 - **Profile Picture & Cover Photo** upload
-- **Personal Information** management (bio, workplace, education, etc.)
+- **Personal Information** management (bio, workplace, education, country, etc.)
 - **Username System** with uniqueness validation
+- **Country Selection** - Choose from 45+ countries
 - **Profile Visibility Settings** (public, friends, private)
 - **Friend List & Follower/Following** counts
+- **Profile Lock System** - Lock profile to restrict non-friends from viewing details
+- **Blue Badge Verification** - Request verification for authenticity
 
 ### Social Features
 - **Posts** - Create, like, comment, share, save
@@ -31,6 +34,30 @@ A comprehensive Facebook clone built with Next.js 16, TypeScript, Tailwind CSS 4
 - **Reels** - Short-form videos
 - **Reactions** - Like, Love, Haha, Wow, Sad, Angry (with viewer dialog)
 - **Share Modal** - Share to timeline, message, or group
+
+### Post Privacy System
+- **Public** - Everyone can see
+- **Friends** - Only friends can see
+- **Friends Except** - Friends except specific people
+- **Specific Friends** - Only selected friends
+- **Only Me** - Private post
+
+### Media Delete Protection
+- Only post author can delete their own posts
+- Only story author can delete their own stories
+- Only reel author can delete their own reels
+
+### Comment System
+- Post comments with proper authorship
+- Delete permissions: Comment author OR Post author can delete comments
+- Nested replies support
+
+### Optimized Search
+- Search by username (prefix with @)
+- Search by name, email
+- Search posts by content
+- Visibility-aware search results
+- Categorized results (Users, Posts, Groups, Pages, Events, Marketplace)
 
 ### Communication
 - **Direct Messaging** with real-time updates
@@ -59,6 +86,8 @@ A comprehensive Facebook clone built with Next.js 16, TypeScript, Tailwind CSS 4
 - **Audience & Visibility** controls
 - **Who Can Send Friend Requests** settings
 - **Who Can Message You** settings
+- **Profile Lock** toggle
+- **Blue Badge Request** system
 
 ### Additional Features
 - **Marketplace** - Buy and sell items
@@ -68,7 +97,6 @@ A comprehensive Facebook clone built with Next.js 16, TypeScript, Tailwind CSS 4
 - **Gaming** section
 - **Favorites** management
 - **Notifications** system
-- **Search** functionality
 
 ## Tech Stack
 
@@ -124,8 +152,8 @@ SESSION_SECRET="your-secret-key-here"
 
 The project uses Prisma with the following main models:
 
-- **User** - User accounts with profile info, settings, and privacy controls
-- **Post** - User posts with media, reactions, comments
+- **User** - User accounts with profile info, settings, privacy controls, country, badge type, profile lock
+- **Post** - User posts with media, reactions, comments, custom visibility
 - **Story** - 24-hour ephemeral content
 - **Reel** - Short-form vertical videos
 - **Message/Conversation** - Direct messaging system
@@ -133,6 +161,7 @@ The project uses Prisma with the following main models:
 - **Notification** - User notifications
 - **Group/Page/Event** - Community features
 - **MarketplaceListing** - Buy/sell marketplace
+- **VerificationRequest** - Blue badge verification requests
 
 ## API Endpoints
 
@@ -149,9 +178,10 @@ The project uses Prisma with the following main models:
 ### Posts
 - `GET /api/posts` - Get feed posts
 - `POST /api/posts` - Create post
-- `DELETE /api/posts/[id]` - Delete post
+- `DELETE /api/posts/[id]` - Delete post (author only)
 - `POST /api/posts/[id]/react` - Add reaction
 - `POST /api/posts/[id]/comment` - Add comment
+- `DELETE /api/posts/[id]/comment` - Delete comment (author or post owner)
 
 ### Users
 - `GET /api/users` - Search users
@@ -169,8 +199,10 @@ The project uses Prisma with the following main models:
 ### Content
 - `GET /api/stories` - Get stories
 - `POST /api/stories` - Create story
+- `DELETE /api/stories` - Delete story (author only)
 - `GET /api/reels` - Get reels
 - `POST /api/reels` - Create reel
+- `DELETE /api/reels` - Delete reel (author only)
 - `GET /api/saved-posts` - Get saved posts
 - `POST /api/saved-posts` - Save/unsave post
 - `POST /api/share` - Share post
@@ -181,9 +213,16 @@ The project uses Prisma with the following main models:
 - `GET /api/conversations/[id]` - Get messages
 - `POST /api/conversations/[id]` - Send message
 
+### Search
+- `GET /api/search` - Global search (users, posts, groups, pages, events, marketplace)
+
+### Verification
+- `POST /api/verification` - Submit verification request
+- `GET /api/verification` - Get verification status
+- `PUT /api/verification` - Admin approve/reject
+
 ### More
 - `GET /api/notifications` - Get notifications
-- `GET /api/search` - Global search
 - `GET /api/groups` - Groups
 - `GET /api/pages` - Pages
 - `GET /api/events` - Events
@@ -225,13 +264,22 @@ facebook-clone/
 - **ShareModal** - Share post options
 - **ReactionViewersDialog** - See who reacted
 - **VideoPlayer** - Adaptive quality video player
-- **EditProfileModal** - Profile editing
+- **EditProfileModal** - Profile editing with country selection
 - **CreateStoryModal** - Story creation
-- **Settings Panel** - Complete settings UI
+- **Settings Panel** - Complete settings UI including profile lock and verification
 
 ## Recent Updates
 
-### Version 2.0 (Latest)
+### Version 3.0 (Latest)
+- ✅ Country system with 45+ countries selection
+- ✅ Optimized search (username, name, posts)
+- ✅ Media delete protection (author only)
+- ✅ Comment delete system (post owner or comment author)
+- ✅ Post privacy system (Public, Friends, Friends Except, Specific Friends, Only Me)
+- ✅ Profile lock system like Facebook
+- ✅ Blue badge verification request system
+
+### Version 2.0
 - ✅ Added Share Modal with multiple share options
 - ✅ Added Reaction Viewers Dialog to see who reacted
 - ✅ Fixed Create Post Modal UI (sticky footer, proper overflow)

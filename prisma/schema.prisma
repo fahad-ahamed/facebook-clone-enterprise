@@ -36,6 +36,7 @@ model User {
   relationshipStatus  String?   // single, in_relationship, married, etc.
   website             String?
   socialLinks         String?   // JSON string for social media links
+  country             String?   // User's country
   
   // Account Settings
   isVerified          Boolean   @default(false)
@@ -44,6 +45,10 @@ model User {
   lastActive          DateTime?
   language            String    @default("en")
   theme               String    @default("light")
+  
+  // Badge & Verification
+  badgeType           String?   // null, 'blue', 'gray', 'gold'
+  isProfileLocked     Boolean   @default(false)
   
   // Privacy Settings
   profileVisibility   String    @default("public") // public, friends, private
@@ -100,6 +105,7 @@ model User {
   deviceSessions      DeviceSession[]
   passwordResets      PasswordReset[]
   verificationTokens  VerificationToken[]
+  verificationRequests VerificationRequest[]
 }
 
 model DeviceSession {
@@ -157,7 +163,8 @@ model Post {
   
   // Post Type & Settings
   postType      String    @default("status") // status, photo, video, link, life_event, check_in
-  visibility    String    @default("friends") // public, friends, private, custom
+  visibility    String    @default("friends") // public, friends, private, custom, specific_friends, friends_except
+  customVisibilityUsers String? // JSON array of user IDs for specific_friends or excluded for friends_except
   allowComments Boolean   @default(true)
   allowSharing  Boolean   @default(true)
   
@@ -922,6 +929,31 @@ model Announcement {
   isActive        Boolean   @default(true)
   startDate       DateTime?
   endDate         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ==================== VERIFICATION REQUESTS ====================
+
+model VerificationRequest {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Request Details
+  fullName        String
+  documentType    String    // passport, drivers_license, national_id, business_docs
+  documentUrl     String?   // URL to uploaded document
+  category        String    // profile, page, business, news
+  reason          String?   // Why they should be verified
+  
+  // Status
+  status          String    @default("pending") // pending, approved, rejected
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  
+  // Timestamps
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }

@@ -14,7 +14,7 @@ function generateVerificationCode(): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { firstName, lastName, email, password, dateOfBirth, gender, phone } = body;
+    const { firstName, lastName, email, password, dateOfBirth, gender, phone, country } = body;
 
     // Validate required fields
     if (!firstName || !lastName || !email || !password) {
@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
         gender: gender || null,
         phone: phone || null,
+        country: country || null,
         isVerified: false
       }
     });
