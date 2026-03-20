@@ -1,0 +1,42 @@
+{
+  "name": "facebook-mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build:android": "eas build --platform android",
+    "build:ios": "eas build --platform ios"
+  },
+  "dependencies": {
+    "expo": "~50.0.0",
+    "expo-router": "~3.4.0",
+    "expo-status-bar": "~1.11.0",
+    "expo-camera": "~14.0.0",
+    "expo-image-picker": "~14.7.0",
+    "expo-notifications": "~0.27.0",
+    "expo-secure-store": "~12.8.0",
+    "react": "18.2.0",
+    "react-native": "0.73.0",
+    "react-native-safe-area-context": "4.8.2",
+    "react-native-screens": "~3.29.0",
+    "@react-navigation/native": "^6.1.0",
+    "@react-navigation/native-stack": "^6.9.0",
+    "@react-navigation/bottom-tabs": "^6.5.0",
+    "react-native-gesture-handler": "~2.14.0",
+    "react-native-reanimated": "~3.6.0",
+    "react-native-svg": "14.1.0",
+    "@apollo/client": "^3.9.0",
+    "graphql": "^16.8.0",
+    "zustand": "^4.5.0",
+    "socket.io-client": "^4.7.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@types/react": "~18.2.0",
+    "typescript": "^5.1.0"
+  },
+  "private": true
+}

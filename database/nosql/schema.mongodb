@@ -1,0 +1,297 @@
+-- =====================================================
+-- NoSQL Schema (MongoDB) - Facebook Clone
+-- High-volume data that doesn't require strict relations
+-- =====================================================
+
+// Messages Collection
+db.createCollection("messages", {
+   validator: {
+      $jsonSchema: {
+         bsonType: "object",
+         required: ["conversationId", "senderId", "createdAt"],
+         properties: {
+            _id: { bsonType: "objectId" },
+            conversationId: { bsonType: "string" },
+            senderId: { bsonType: "string" },
+            content: { bsonType: "string" },
+            media: {
+               bsonType: "array",
+               items: {
+                  bsonType: "object",
+                  properties: {
+                     type: { bsonType: "string" },
+                     url: { bsonType: "string" },
+                     thumbnail: { bsonType: "string" },
+                     width: { bsonType: "int" },
+                     height: { bsonType: "int" }
+                  }
+               }
+            },
+            replyTo: { bsonType: "string" },
+            reactions: {
+               bsonType: "array",
+               items: {
+                  bsonType: "object",
+                  properties: {
+                     userId: { bsonType: "string" },
+                     type: { bsonType: "string" },
+                     createdAt: { bsonType: "date" }
+                  }
+               }
+            },
+            readBy: {
+               bsonType: "array",
+               items: { bsonType: "string" }
+            },
+            deliveredTo: {
+               bsonType: "array",
+               items: { bsonType: "string" }
+            },
+            deletedFor: {
+               bsonType: "array",
+               items: { bsonType: "string" }
+            },
+            isEdited: { bsonType: "bool" },
+            createdAt: { bsonType: "date" },
+            updatedAt: { bsonType: "date" }
+         }
+      }
+   }
+});
+
+// Create indexes for messages
+db.messages.createIndex({ conversationId: 1, createdAt: -1 });
+db.messages.createIndex({ senderId: 1, createdAt: -1 });
+db.messages.createIndex({ "readBy": 1 });
+db.messages.createIndex({ createdAt: 1 }, { expireAfterSeconds: 31536000 }); // TTL: 1 year
+
+// Conversations Collection
+db.createCollection("conversations", {
+   validator: {
+      $jsonSchema: {
+         bsonType: "object",
+         required: ["participants", "type", "createdAt"],
+         properties: {
+            _id: { bsonType: "objectId" },
+            type: { bsonType: "string", enum: ["private", "group"] },
+            participants: {
+               bsonType: "array",
+               items: { bsonType: "string" }
+            },
+            name: { bsonType: "string" }, // for group chats
+            avatar: { bsonType: "string" },
+            admins: {
+               bsonType: "array",
+               items: { bsonType: "string" }
+            },
+            lastMessage: {
+               bsonType: "object",
+               properties: {
+                  id: { bsonType: "string" },
+                  content: { bsonType: "string" },
+                  senderId: { bsonType: "string" },
+                  createdAt: { bsonType: "date" }
+               }
+            },
+            unreadCount: {
+               bsonType: "object",
+               additionalProperties: { bsonType: "int" }
+            },
+            typing: {
+               bsonType: "array",
+               items: {
+                  bsonType: "object",
+                  properties: {
+                     userId: { bsonType: "string" },
+                     startedAt: { bsonType: "date" }
+                  }
+               }
+            },
+            settings: {
+               bsonType: "object",
+               properties: {
+                  muted: {
+                     bsonType: "array",
+                     items: { bsonType: "string" }
+                  },
+                  pinned: {
+                     bsonType: "array",
+                     items: { bsonType: "string" }
+                  }
+               }
+            },
+            createdAt: { bsonType: "date" },
+            updatedAt: { bsonType: "date" }
+         }
+      }
+   }
+});
+
+// Create indexes for conversations
+db.conversations.createIndex({ participants: 1 });
+db.conversations.createIndex({ "participants.0": 1, "participants.1": 1 });
+db.conversations.createIndex({ updatedAt: -1 });
+
+// Feed Cache Collection
+db.createCollection("feeds", {
+   validator: {
+      $jsonSchema: {
+         bsonType: "object",
+         required: ["userId", "posts"],
+         properties: {
+            _id: { bsonType: "objectId" },
+            userId: { bsonType: "string" },
+            posts: {
+               bsonType: "array",
+               items: {
+                  bsonType: "object",
+                  properties: {
+                     postId: { bsonType: "string" },
+                     score: { bsonType: "double" },
+                     reason: { bsonType: "string" },
+                     insertedAt: { bsonType: "date" }
+                  }
+               }
+            },
+            lastUpdated: { bsonType: "date" },
+            version: { bsonType: "int" }
+         }
+      }
+   }
+});
+
+// Create indexes for feeds
+db.feeds.createIndex({ userId: 1 }, { unique: true });
+db.feeds.createIndex({ lastUpdated: 1 });
+
+// Notifications Collection
+db.createCollection("notifications_store", {
+   validator: {
+      $jsonSchema: {
+         bsonType: "object",
+         required: ["userId", "type", "createdAt"],
+         properties: {
+            _id: { bsonType: "objectId" },
+            userId: { bsonType: "string" },
+            type: { bsonType: "string" },
+            title: { bsonType: "string" },
+            body: { bsonType: "string" },
+            data: { bsonType: "object" },
+            image: { bsonType: "string" },
+            read: { bsonType: "bool" },
+            clicked: { bsonType: "bool" },
+            createdAt: { bsonType: "date" },
+            readAt: { bsonType: "date" }
+         }
+      }
+   }
+});
+
+// Create indexes for notifications
+db.notifications_store.createIndex({ userId: 1, createdAt: -1 });
+db.notifications_store.createIndex({ userId: 1, read: 1 });
+db.notifications_store.createIndex({ createdAt: 1 }, { expireAfterSeconds: 2592000 }); // TTL: 30 days
+
+// Activity Log Collection
+db.createCollection("activity_logs", {
+   validator: {
+      $jsonSchema: {
+         bsonType: "object",
+         required: ["userId", "action", "timestamp"],
+         properties: {
+            _id: { bsonType: "objectId" },
+            userId: { bsonType: "string" },
+            action: { bsonType: "string" },
+            entityType: { bsonType: "string" },
+            entityId: { bsonType: "string" },
+            metadata: { bsonType: "object" },
+            ipAddress: { bsonType: "string" },
+            userAgent: { bsonType: "string" },
+            timestamp: { bsonType: "date" }
+         }
+      }
+   }
+});
+
+// Create indexes for activity logs
+db.activity_logs.createIndex({ userId: 1, timestamp: -1 });
+db.activity_logs.createIndex({ action: 1, timestamp: -1 });
+db.activity_logs.createIndex({ entityType: 1, entityId: 1 });
+db.activity_logs.createIndex({ timestamp: 1 }, { expireAfterSeconds: 7776000 }); // TTL: 90 days
+
+// Analytics Events Collection (Time Series)
+db.createCollection("analytics_events", {
+   timeseries: {
+      timeField: "timestamp",
+      metaField: "eventType",
+      granularity: "minutes"
+   }
+});
+
+// Schema for analytics events
+// {
+//    timestamp: Date,
+//    eventType: String,  // page_view, click, scroll, etc.
+//    userId: String,
+//    sessionId: String,
+//    properties: Object,
+//    context: {
+//       device: String,
+//       os: String,
+//       browser: String,
+//       referrer: String,
+//       page: String
+//    }
+// }
+
+// Create indexes for analytics
+db.analytics_events.createIndex({ eventType: 1, timestamp: -1 });
+db.analytics_events.createIndex({ userId: 1, timestamp: -1 });
+
+// Presence Collection
+db.createCollection("presence", {
+   validator: {
+      $jsonSchema: {
+         bsonType: "object",
+         required: ["userId"],
+         properties: {
+            _id: { bsonType: "objectId" },
+            userId: { bsonType: "string" },
+            status: { bsonType: "string", enum: ["online", "away", "busy", "offline"] },
+            lastActive: { bsonType: "date" },
+            deviceId: { bsonType: "string" },
+            platform: { bsonType: "string" }
+         }
+      }
+   }
+});
+
+// Create indexes for presence
+db.presence.createIndex({ userId: 1 }, { unique: true });
+db.presence.createIndex({ status: 1 });
+
+// Cache Collection (for various cached data)
+db.createCollection("cache", {
+   validator: {
+      $jsonSchema: {
+         bsonType: "object",
+         required: ["key"],
+         properties: {
+            _id: { bsonType: "objectId" },
+            key: { bsonType: "string" },
+            value: { bsonType: "object" },
+            ttl: { bsonType: "date" },
+            tags: {
+               bsonType: "array",
+               items: { bsonType: "string" }
+            },
+            createdAt: { bsonType: "date" }
+         }
+      }
+   }
+});
+
+// Create indexes for cache
+db.cache.createIndex({ key: 1 }, { unique: true });
+db.cache.createIndex({ ttl: 1 }, { expireAfterSeconds: 0 });
+db.cache.createIndex({ tags: 1 });

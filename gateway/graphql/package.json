@@ -1,0 +1,50 @@
+{
+  "name": "@facebook-clone/gateway-graphql",
+  "version": "1.0.0",
+  "description": "GraphQL Gateway for Facebook Clone - Enterprise Architecture",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "lint": "eslint src/**/*.ts",
+    "codegen": "graphql-codegen --config codegen.yml",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@apollo/server": "^4.9.5",
+    "@apollo/subgraph": "^2.5.6",
+    "graphql": "^16.8.1",
+    "graphql-ws": "^5.14.2",
+    "graphql-subscriptions": "^2.0.0",
+    "graphql-scalars": "^1.22.4",
+    "@graphql-tools/schema": "^10.0.0",
+    "@graphql-tools/load": "^8.0.0",
+    "@graphql-tools/merge": "^9.0.0",
+    "ws": "^8.14.2",
+    "jsonwebtoken": "^9.0.2",
+    "dataloader": "^2.2.2",
+    "winston": "^3.11.0",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.1",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.5.9",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/uuid": "^9.0.7",
+    "typescript": "^5.3.2",
+    "ts-node-dev": "^2.0.0",
+    "@graphql-codegen/cli": "^5.0.0",
+    "@graphql-codegen/typescript": "^4.0.0",
+    "@graphql-codegen/typescript-resolvers": "^4.0.0",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

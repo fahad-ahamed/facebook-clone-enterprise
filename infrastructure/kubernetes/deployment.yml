@@ -1,10 +1,21 @@
-# Kubernetes Deployment for Facebook Clone Enterprise
+# =====================================================
+# Kubernetes Deployment - Facebook Clone
+# Production-ready deployment configurations
+# =====================================================
+
 apiVersion: v1
 kind: Namespace
 metadata:
   name: facebook-clone
+  labels:
+    app: facebook-clone
+    environment: production
+
 ---
-# ConfigMap for app configuration
+# =====================================================
+# ConfigMaps
+# =====================================================
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,10 +23,17 @@ metadata:
   namespace: facebook-clone
 data:
   NODE_ENV: "production"
+  LOG_LEVEL: "info"
   REDIS_URL: "redis://redis-service:6379"
+  POSTGRES_URL: "postgresql://postgres-service:5432/facebook"
+  MONGODB_URL: "mongodb://mongodb-service:27017/facebook"
   KAFKA_BROKERS: "kafka-service:9092"
+
 ---
-# Secret for sensitive data
+# =====================================================
+# Secrets
+# =====================================================
+
 apiVersion: v1
 kind: Secret
 metadata:
@@ -23,16 +41,26 @@ metadata:
   namespace: facebook-clone
 type: Opaque
 stringData:
-  DATABASE_URL: "<DATABASE_URL>"
-  JWT_SECRET: "<JWT_SECRET>"
-  REDIS_PASSWORD: "<REDIS_PASSWORD>"
+  JWT_SECRET: "your-jwt-secret-key"
+  JWT_REFRESH_SECRET: "your-refresh-secret-key"
+  DATABASE_PASSWORD: "postgres-password"
+  REDIS_PASSWORD: "redis-password"
+  AWS_ACCESS_KEY_ID: "aws-access-key"
+  AWS_SECRET_ACCESS_KEY: "aws-secret-key"
+  ENCRYPTION_KEY: "your-encryption-key"
+
 ---
+# =====================================================
 # Auth Service Deployment
+# =====================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: auth-service
   namespace: facebook-clone
+  labels:
+    app: auth-service
 spec:
   replicas: 3
   selector:
@@ -42,56 +70,59 @@ spec:
     metadata:
       labels:
         app: auth-service
+        version: v1
     spec:
       containers:
-      - name: auth-service
-        image: facebook-clone/auth-service:latest
-        ports:
-        - containerPort: 4001
-        envFrom:
-        - configMapRef:
-            name: app-config
-        - secretRef:
-            name: app-secrets
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 4001
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 4001
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: auth-service
+          image: facebook-clone/auth-service:latest
+          ports:
+            - containerPort: 4001
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: auth-service
+                topologyKey: kubernetes.io/hostname
+
 ---
-# Auth Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: auth-service
-  namespace: facebook-clone
-spec:
-  selector:
-    app: auth-service
-  ports:
-  - port: 4001
-    targetPort: 4001
----
+# =====================================================
 # User Service Deployment
+# =====================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
   namespace: facebook-clone
+  labels:
+    app: user-service
 spec:
   replicas: 3
   selector:
@@ -101,26 +132,46 @@ spec:
     metadata:
       labels:
         app: user-service
+        version: v1
     spec:
       containers:
-      - name: user-service
-        image: facebook-clone/user-service:latest
-        ports:
-        - containerPort: 4002
-        envFrom:
-        - configMapRef:
-            name: app-config
-        - secretRef:
-            name: app-secrets
+        - name: user-service
+          image: facebook-clone/user-service:latest
+          ports:
+            - containerPort: 4002
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4002
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
 ---
+# =====================================================
 # Post Service Deployment
+# =====================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: post-service
   namespace: facebook-clone
+  labels:
+    app: post-service
 spec:
-  replicas: 5
+  replicas: 3
   selector:
     matchLabels:
       app: post-service
@@ -128,24 +179,38 @@ spec:
     metadata:
       labels:
         app: post-service
+        version: v1
     spec:
       containers:
-      - name: post-service
-        image: facebook-clone/post-service:latest
-        ports:
-        - containerPort: 4003
-        envFrom:
-        - configMapRef:
-            name: app-config
-        - secretRef:
-            name: app-secrets
+        - name: post-service
+          image: facebook-clone/post-service:latest
+          ports:
+            - containerPort: 4003
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
 ---
+# =====================================================
 # Chat Service Deployment
+# =====================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: chat-service
   namespace: facebook-clone
+  labels:
+    app: chat-service
 spec:
   replicas: 3
   selector:
@@ -155,81 +220,323 @@ spec:
     metadata:
       labels:
         app: chat-service
+        version: v1
     spec:
       containers:
-      - name: chat-service
-        image: facebook-clone/chat-service:latest
-        ports:
-        - containerPort: 4004
-        envFrom:
-        - configMapRef:
-            name: app-config
-        - secretRef:
-            name: app-secrets
+        - name: chat-service
+          image: facebook-clone/chat-service:latest
+          ports:
+            - containerPort: 4005
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+
 ---
-# Ingress for API Gateway
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+# =====================================================
+# Feed Service Deployment
+# =====================================================
+
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: api-ingress
+  name: feed-service
   namespace: facebook-clone
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+  labels:
+    app: feed-service
 spec:
-  tls:
-  - hosts:
-    - api.facebook-clone.com
-    secretName: api-tls
-  rules:
-  - host: api.facebook-clone.com
-    http:
-      paths:
-      - path: /auth
-        pathType: Prefix
-        backend:
-          service:
-            name: auth-service
-            port:
-              number: 4001
-      - path: /users
-        pathType: Prefix
-        backend:
-          service:
-            name: user-service
-            port:
-              number: 4002
-      - path: /posts
-        pathType: Prefix
-        backend:
-          service:
-            name: post-service
-            port:
-              number: 4003
+  replicas: 3
+  selector:
+    matchLabels:
+      app: feed-service
+  template:
+    metadata:
+      labels:
+        app: feed-service
+        version: v1
+    spec:
+      containers:
+        - name: feed-service
+          image: facebook-clone/feed-service:latest
+          ports:
+            - containerPort: 4004
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+
 ---
+# =====================================================
+# Gateway Deployment
+# =====================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: facebook-clone
+  labels:
+    app: gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+        version: v1
+    spec:
+      containers:
+        - name: gateway
+          image: facebook-clone/gateway:latest
+          ports:
+            - containerPort: 4000
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+---
+# =====================================================
+# WebSocket Server Deployment
+# =====================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: websocket-server
+  namespace: facebook-clone
+  labels:
+    app: websocket-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: websocket-server
+  template:
+    metadata:
+      labels:
+        app: websocket-server
+        version: v1
+    spec:
+      containers:
+        - name: websocket-server
+          image: facebook-clone/websocket-server:latest
+          ports:
+            - containerPort: 4001
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+
+---
+# =====================================================
+# Services
+# =====================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+  namespace: facebook-clone
+spec:
+  selector:
+    app: gateway
+  ports:
+    - port: 80
+      targetPort: 4000
+  type: LoadBalancer
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: facebook-clone
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - port: 4001
+      targetPort: 4001
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: facebook-clone
+spec:
+  selector:
+    app: user-service
+  ports:
+    - port: 4002
+      targetPort: 4002
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: post-service
+  namespace: facebook-clone
+spec:
+  selector:
+    app: post-service
+  ports:
+    - port: 4003
+      targetPort: 4003
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: feed-service
+  namespace: facebook-clone
+spec:
+  selector:
+    app: feed-service
+  ports:
+    - port: 4004
+      targetPort: 4004
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-service
+  namespace: facebook-clone
+spec:
+  selector:
+    app: chat-service
+  ports:
+    - port: 4005
+      targetPort: 4005
+
+---
+# =====================================================
 # Horizontal Pod Autoscaler
+# =====================================================
+
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: post-service-hpa
+  name: chat-service-hpa
   namespace: facebook-clone
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: post-service
+    name: chat-service
   minReplicas: 3
   maxReplicas: 20
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: feed-service-hpa
+  namespace: facebook-clone
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: feed-service
+  minReplicas: 3
+  maxReplicas: 15
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+---
+# =====================================================
+# Ingress
+# =====================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: facebook-clone-ingress
+  namespace: facebook-clone
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  tls:
+    - hosts:
+        - api.facebook-clone.com
+        - ws.facebook-clone.com
+      secretName: facebook-clone-tls
+  rules:
+    - host: api.facebook-clone.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  number: 80
+    - host: ws.facebook-clone.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: websocket-server
+                port:
+                  number: 4001

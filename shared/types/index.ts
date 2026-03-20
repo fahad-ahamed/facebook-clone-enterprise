@@ -3,98 +3,191 @@
  * TypeScript type definitions used across services
  */
 
+// =====================================================
 // User Types
+// =====================================================
+
 export interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  username?: string;
-  avatar?: string;
-  coverPhoto?: string;
+  username: string;
+  fullName: string;
   bio?: string;
-  dateOfBirth?: Date;
-  gender?: 'male' | 'female' | 'custom';
-  phone?: string;
-  currentCity?: string;
-  hometown?: string;
-  workplace?: string;
-  education?: string;
-  relationshipStatus?: string;
-  country?: string;
+  avatarUrl?: string;
+  coverUrl?: string;
+  gender?: Gender;
+  birthDate?: Date;
+  location?: string;
+  website?: string;
+  language: string;
+  timezone: string;
   isVerified: boolean;
-  isOnline: boolean;
+  isPrivate: boolean;
+  status: UserStatus;
+  lastActiveAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
+export type Gender = 'male' | 'female' | 'custom' | 'prefer_not_to_say';
+export type UserStatus = 'active' | 'inactive' | 'suspended' | 'banned' | 'deleted';
+export type UserRole = 'user' | 'moderator' | 'admin' | 'superadmin';
+
+export interface UserProfile extends User {
+  followerCount: number;
+  followingCount: number;
+  friendCount: number;
+  postCount: number;
+  isFollowing?: boolean;
+  isFriend?: boolean;
+  isBlocked?: boolean;
+}
+
+// =====================================================
+// Authentication Types
+// =====================================================
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+export interface Session {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  deviceInfo?: DeviceInfo;
+  ipAddress?: string;
+  userAgent?: string;
+  isActive: boolean;
+  expiresAt: Date;
+  createdAt: Date;
+}
+
+export interface DeviceInfo {
+  deviceType: 'mobile' | 'tablet' | 'desktop';
+  os: string;
+  browser: string;
+  deviceName?: string;
+}
+
+export interface TwoFactorSetup {
+  secret: string;
+  qrCodeUrl: string;
+  backupCodes: string[];
+}
+
+// =====================================================
 // Post Types
+// =====================================================
+
 export interface Post {
   id: string;
-  authorId: string;
-  author: User;
+  userId: string;
   content?: string;
-  mediaType?: 'image' | 'video' | 'gif';
-  mediaUrl?: string;
-  mediaUrls?: string[];
-  postType: 'status' | 'photo' | 'video' | 'link' | 'check_in';
-  visibility: 'public' | 'friends' | 'only_me' | 'specific_friends';
-  feeling?: { emoji: string; text: string };
+  media: PostMedia[];
+  visibility: PostVisibility;
   location?: string;
-  likeCount: number;
+  feeling?: string;
+  tags: string[];
+  groupId?: string;
+  pageId?: string;
+  isPinned: boolean;
+  isFeatured: boolean;
   commentCount: number;
+  likeCount: number;
   shareCount: number;
   createdAt: Date;
   updatedAt: Date;
-  userReaction?: string | null;
-  comments?: Comment[];
-  reactions?: Reaction[];
+  deletedAt?: Date;
 }
 
+export type PostVisibility = 'public' | 'friends' | 'private';
+
+export interface PostMedia {
+  id: string;
+  postId: string;
+  type: MediaType;
+  url: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+  position: number;
+  metadata?: Record<string, any>;
+}
+
+export type MediaType = 'image' | 'video' | 'gif';
+
+export interface PostWithAuthor extends Post {
+  author: UserProfile;
+  isLiked: boolean;
+  isSaved: boolean;
+  reactions: ReactionSummary[];
+}
+
+export interface ReactionSummary {
+  type: ReactionType;
+  count: number;
+  isUserReaction: boolean;
+}
+
+// =====================================================
 // Comment Types
+// =====================================================
+
 export interface Comment {
   id: string;
   postId: string;
-  authorId: string;
-  author: User;
+  userId: string;
   parentId?: string;
   content: string;
-  mediaUrl?: string;
+  media?: PostMedia[];
   likeCount: number;
   replyCount: number;
+  isEdited: boolean;
   createdAt: Date;
-  replies?: Comment[];
+  updatedAt: Date;
+  deletedAt?: Date;
 }
 
+export interface CommentWithAuthor extends Comment {
+  author: UserProfile;
+  isLiked: boolean;
+  replies?: CommentWithAuthor[];
+}
+
+// =====================================================
 // Reaction Types
+// =====================================================
+
 export interface Reaction {
   id: string;
   userId: string;
-  type: 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry' | 'care';
-  postId?: string;
-  commentId?: string;
+  reactableType: 'post' | 'comment';
+  reactableId: string;
+  type: ReactionType;
   createdAt: Date;
 }
 
-// Friend Types
+export type ReactionType = 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry';
+
+// =====================================================
+// Social Graph Types
+// =====================================================
+
 export interface Friendship {
   id: string;
-  user1Id: string;
-  user2Id: string;
+  requesterId: string;
+  addresseeId: string;
+  status: FriendshipStatus;
   createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface FriendRequest {
-  id: string;
-  senderId: string;
-  sender: User;
-  receiverId: string;
-  receiver: User;
-  status: 'pending' | 'accepted' | 'rejected' | 'canceled';
-  createdAt: Date;
-}
+export type FriendshipStatus = 'pending' | 'accepted' | 'rejected' | 'blocked';
 
-// Follow Types
 export interface Follow {
   id: string;
   followerId: string;
@@ -102,131 +195,192 @@ export interface Follow {
   createdAt: Date;
 }
 
+// =====================================================
 // Chat Types
+// =====================================================
+
 export interface Conversation {
   id: string;
-  type: 'direct' | 'group';
+  type: ConversationType;
+  participants: string[];
   name?: string;
-  participants: User[];
-  lastMessage?: Message;
-  lastMessageAt?: Date;
+  avatar?: string;
+  admins?: string[];
+  lastMessage?: MessagePreview;
+  unreadCount: Record<string, number>;
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type ConversationType = 'private' | 'group';
 
 export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
-  sender: User;
   content?: string;
-  messageType: 'text' | 'image' | 'video' | 'audio' | 'voice' | 'file' | 'sticker' | 'gif';
-  mediaUrl?: string;
-  fileName?: string;
-  fileSize?: number;
-  voiceDuration?: number;
-  status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
-  deliveredAt?: Date;
-  readAt?: Date;
-  isRead: boolean;
+  media?: PostMedia[];
+  replyToId?: string;
+  reactions: MessageReaction[];
+  readBy: string[];
+  deliveredTo: string[];
+  isEdited: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
+}
+
+export interface MessagePreview {
+  id: string;
+  content?: string;
+  senderId: string;
   createdAt: Date;
 }
 
+export interface MessageReaction {
+  userId: string;
+  type: ReactionType;
+  createdAt: Date;
+}
+
+// =====================================================
 // Notification Types
+// =====================================================
+
 export interface Notification {
   id: string;
   userId: string;
-  type: string;
+  type: NotificationType;
   title?: string;
-  message: string;
-  image?: string;
-  actor?: User;
-  relatedType?: string;
-  relatedId?: string;
-  actionUrl?: string;
+  content?: string;
+  data?: Record<string, any>;
+  imageUrl?: string;
   isRead: boolean;
-  readAt?: Date;
   createdAt: Date;
+  readAt?: Date;
 }
 
+export type NotificationType =
+  | 'friend_request'
+  | 'friend_accepted'
+  | 'new_follower'
+  | 'post_like'
+  | 'post_comment'
+  | 'comment_reply'
+  | 'comment_like'
+  | 'post_share'
+  | 'post_mention'
+  | 'comment_mention'
+  | 'group_invite'
+  | 'group_accepted'
+  | 'group_post'
+  | 'page_like'
+  | 'event_invite'
+  | 'event_reminder'
+  | 'new_message'
+  | 'account_security'
+  | 'policy_violation'
+  | 'feature_update';
+
+// =====================================================
 // Group Types
+// =====================================================
+
 export interface Group {
   id: string;
   name: string;
   description?: string;
-  coverPhoto?: string;
-  avatar?: string;
-  type: 'public' | 'private' | 'secret';
+  coverUrl?: string;
+  privacy: GroupPrivacy;
+  creatorId: string;
   memberCount: number;
   postCount: number;
-  createdBy: User;
+  rules?: string[];
   createdAt: Date;
-  isMember?: boolean;
-  isAdmin?: boolean;
+  updatedAt: Date;
 }
 
-// Page Types
-export interface Page {
+export type GroupPrivacy = 'public' | 'private' | 'secret';
+
+export interface GroupMember {
   id: string;
-  name: string;
-  username?: string;
-  description?: string;
-  avatar?: string;
-  coverPhoto?: string;
-  category: string;
-  likeCount: number;
-  followerCount: number;
-  isVerified: boolean;
-  createdAt: Date;
-  isLiked?: boolean;
-  isAdmin?: boolean;
+  groupId: string;
+  userId: string;
+  role: GroupRole;
+  status: 'active' | 'banned' | 'left';
+  joinedAt: Date;
 }
 
+export type GroupRole = 'creator' | 'admin' | 'moderator' | 'member';
+
+// =====================================================
 // Event Types
+// =====================================================
+
 export interface Event {
   id: string;
-  title: string;
+  name: string;
   description?: string;
-  coverPhoto?: string;
-  startDate: Date;
-  endDate?: Date;
+  coverUrl?: string;
+  creatorId: string;
+  groupId?: string;
+  startTime: Date;
+  endTime?: Date;
   location?: string;
+  latitude?: number;
+  longitude?: number;
   isOnline: boolean;
   onlineUrl?: string;
-  host: User;
+  privacy: EventPrivacy;
   goingCount: number;
   interestedCount: number;
-  visibility: 'public' | 'private';
   createdAt: Date;
-  isGoing?: boolean;
-  isInterested?: boolean;
 }
 
-// Story Types
+export type EventPrivacy = 'public' | 'private' | 'group';
+
+export interface EventRsvp {
+  id: string;
+  eventId: string;
+  userId: string;
+  status: RsvpStatus;
+  createdAt: Date;
+}
+
+export type RsvpStatus = 'going' | 'interested' | 'not_going';
+
+// =====================================================
+// Story & Reel Types
+// =====================================================
+
 export interface Story {
   id: string;
   userId: string;
-  user: User;
-  mediaType: 'image' | 'video';
   mediaUrl: string;
+  mediaType: MediaType;
+  thumbnailUrl?: string;
   caption?: string;
+  duration?: number;
   viewCount: number;
-  reactionCount: number;
-  createdAt: Date;
   expiresAt: Date;
-  isViewed?: boolean;
+  createdAt: Date;
 }
 
-// Reel Types
+export interface StoryView {
+  id: string;
+  storyId: string;
+  userId: string;
+  viewedAt: Date;
+}
+
 export interface Reel {
   id: string;
   userId: string;
-  author: User;
   videoUrl: string;
   thumbnailUrl?: string;
   caption?: string;
-  audio?: string;
-  duration?: number;
+  audioId?: string;
+  duration: number;
   viewCount: number;
   likeCount: number;
   commentCount: number;
@@ -234,66 +388,172 @@ export interface Reel {
   createdAt: Date;
 }
 
+// =====================================================
 // Marketplace Types
-export interface MarketplaceListing {
+// =====================================================
+
+export interface Listing {
   id: string;
   sellerId: string;
-  seller: User;
   title: string;
   description?: string;
   price: number;
   currency: string;
   category: string;
-  condition: 'new' | 'like_new' | 'used' | 'fair';
+  condition: ListingCondition;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
   images: string[];
-  location: string;
-  status: 'available' | 'pending' | 'sold';
+  status: ListingStatus;
   viewCount: number;
-  saveCount: number;
   createdAt: Date;
+  updatedAt: Date;
 }
 
-// API Response Types
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-}
+export type ListingCondition = 'new' | 'like_new' | 'good' | 'fair' | 'poor';
+export type ListingStatus = 'available' | 'sold' | 'reserved';
 
-export interface PaginatedResponse<T> {
-  data: T[];
+// =====================================================
+// Search Types
+// =====================================================
+
+export interface SearchResult<T> {
+  items: T[];
   total: number;
   page: number;
   limit: number;
   hasMore: boolean;
 }
 
-// Auth Types
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
+export interface SearchQuery {
+  q: string;
+  type?: 'all' | 'users' | 'posts' | 'groups' | 'pages' | 'events' | 'hashtags';
+  filters?: SearchFilters;
+  sort?: 'relevance' | 'recent' | 'popular';
+  page?: number;
+  limit?: number;
 }
 
-export interface AuthUser {
-  userId: string;
-  email: string;
-  role?: string;
+export interface SearchFilters {
+  dateRange?: { start: Date; end: Date };
+  location?: string;
+  authorId?: string;
 }
 
-// Search Types
-export interface SearchResult {
-  type: 'user' | 'post' | 'group' | 'page' | 'event';
+// =====================================================
+// Pagination Types
+// =====================================================
+
+export interface PaginatedResult<T> {
+  data: T[];
+  pagination: PaginationInfo;
+}
+
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+export interface PaginationQuery {
+  page?: number;
+  limit?: number;
+  cursor?: string;
+}
+
+// =====================================================
+// API Response Types
+// =====================================================
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: ApiError;
+  meta?: ResponseMeta;
+}
+
+export interface ApiError {
+  code: string | number;
+  message: string;
+  details?: any;
+}
+
+export interface ResponseMeta {
+  timestamp: string;
+  requestId?: string;
+  pagination?: PaginationInfo;
+  rateLimit?: {
+    limit: number;
+    remaining: number;
+    reset: number;
+  };
+}
+
+// =====================================================
+// Webhook Types
+// =====================================================
+
+export interface WebhookEvent {
   id: string;
-  score: number;
-  data: unknown;
+  type: string;
+  source: string;
+  timestamp: Date;
+  data: Record<string, any>;
+  metadata?: Record<string, any>;
 }
 
+// =====================================================
+// File Types
+// =====================================================
+
+export interface FileUpload {
+  id: string;
+  userId: string;
+  type: FileType;
+  originalName: string;
+  size: number;
+  mimeType: string;
+  bucket: string;
+  key: string;
+  url: string;
+  variants?: Record<string, string>;
+  status: 'pending' | 'processing' | 'ready' | 'failed';
+  createdAt: Date;
+}
+
+export type FileType = 'image' | 'video' | 'document' | 'avatar' | 'cover' | 'story' | 'reel';
+
+// =====================================================
 // Analytics Types
+// =====================================================
+
 export interface AnalyticsEvent {
-  type: string;
+  eventType: string;
   userId?: string;
-  properties: Record<string, unknown>;
+  sessionId?: string;
   timestamp: Date;
+  properties: Record<string, any>;
+  context: {
+    device?: string;
+    os?: string;
+    browser?: string;
+    referrer?: string;
+    page?: string;
+  };
+}
+
+export interface MetricsSummary {
+  totalUsers: number;
+  activeUsers: number;
+  totalPosts: number;
+  totalComments: number;
+  totalMessages: number;
+  engagement: {
+    dailyActiveUsers: number;
+    weeklyActiveUsers: number;
+    monthlyActiveUsers: number;
+  };
 }

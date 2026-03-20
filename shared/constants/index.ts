@@ -3,7 +3,21 @@
  * Application-wide constants
  */
 
-// HTTP Status Codes
+// =====================================================
+// Application Constants
+// =====================================================
+
+export const APP_NAME = 'Facebook Clone';
+export const APP_VERSION = '1.0.0';
+export const APP_DESCRIPTION = 'A full-featured social media platform clone';
+
+// =====================================================
+// API Constants
+// =====================================================
+
+export const API_VERSION = 'v1';
+export const API_PREFIX = `/api/${API_VERSION}`;
+
 export const HTTP_STATUS = {
   OK: 200,
   CREATED: 201,
@@ -19,87 +33,82 @@ export const HTTP_STATUS = {
   SERVICE_UNAVAILABLE: 503,
 } as const;
 
-// Error Messages
-export const ERROR_MESSAGES = {
-  UNAUTHORIZED: 'You are not authorized to perform this action',
-  FORBIDDEN: 'Access denied',
-  NOT_FOUND: 'Resource not found',
-  INVALID_INPUT: 'Invalid input provided',
-  RATE_LIMIT_EXCEEDED: 'Too many requests. Please try again later',
-  INTERNAL_ERROR: 'An internal error occurred. Please try again',
-  SESSION_EXPIRED: 'Your session has expired. Please login again',
-  USER_NOT_FOUND: 'User not found',
-  POST_NOT_FOUND: 'Post not found',
-  ALREADY_FRIENDS: 'Already friends with this user',
-  ALREADY_FOLLOWING: 'Already following this user',
-  CANNOT_BLOCK_SELF: 'You cannot block yourself',
-  CANNOT_FRIEND_SELF: 'You cannot send a friend request to yourself',
+export const ERROR_CODES = {
+  // Auth errors
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+  TOKEN_INVALID: 'TOKEN_INVALID',
+  SESSION_EXPIRED: 'SESSION_EXPIRED',
+  TWO_FACTOR_REQUIRED: 'TWO_FACTOR_REQUIRED',
+  
+  // User errors
+  USER_NOT_FOUND: 'USER_NOT_FOUND',
+  USER_ALREADY_EXISTS: 'USER_ALREADY_EXISTS',
+  USERNAME_TAKEN: 'USERNAME_TAKEN',
+  EMAIL_TAKEN: 'EMAIL_TAKEN',
+  
+  // Content errors
+  POST_NOT_FOUND: 'POST_NOT_FOUND',
+  COMMENT_NOT_FOUND: 'COMMENT_NOT_FOUND',
+  UNAUTHORIZED_ACCESS: 'UNAUTHORIZED_ACCESS',
+  
+  // Rate limiting
+  RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
+  
+  // Validation
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  INVALID_INPUT: 'INVALID_INPUT',
+  
+  // Server errors
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
 } as const;
 
-// Success Messages
-export const SUCCESS_MESSAGES = {
-  CREATED: 'Resource created successfully',
-  UPDATED: 'Resource updated successfully',
-  DELETED: 'Resource deleted successfully',
-  FRIEND_REQUEST_SENT: 'Friend request sent successfully',
-  FRIEND_REQUEST_ACCEPTED: 'Friend request accepted',
-  FOLLOW_SUCCESS: 'Now following this user',
-  POST_CREATED: 'Post created successfully',
-  MESSAGE_SENT: 'Message sent successfully',
-} as const;
+// =====================================================
+// User Constants
+// =====================================================
 
-// Pagination
-export const PAGINATION = {
-  DEFAULT_PAGE: 1,
-  DEFAULT_LIMIT: 10,
-  MAX_LIMIT: 100,
-} as const;
-
-// File Upload
-export const FILE_UPLOAD = {
-  MAX_SIZE: 100 * 1024 * 1024, // 100MB
-  MAX_IMAGE_SIZE: 10 * 1024 * 1024, // 10MB
-  MAX_VIDEO_SIZE: 100 * 1024 * 1024, // 100MB
-  ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-  ALLOWED_VIDEO_TYPES: ['video/mp4', 'video/webm', 'video/quicktime'],
-  ALLOWED_DOCUMENT_TYPES: ['application/pdf', 'application/msword'],
-} as const;
-
-// Rate Limits
-export const RATE_LIMITS = {
-  LOGIN: { windowMs: 15 * 60 * 1000, max: 10 }, // 10 per 15 min
-  REGISTER: { windowMs: 60 * 60 * 1000, max: 5 }, // 5 per hour
-  POST_CREATE: { windowMs: 60 * 1000, max: 10 }, // 10 per min
-  COMMENT_CREATE: { windowMs: 60 * 1000, max: 30 }, // 30 per min
-  MESSAGE_SEND: { windowMs: 60 * 1000, max: 60 }, // 60 per min
-  SEARCH: { windowMs: 60 * 1000, max: 30 }, // 30 per min
-} as const;
-
-// Token Expiration
-export const TOKEN_EXPIRY = {
-  ACCESS_TOKEN: '7d',
-  REFRESH_TOKEN: '30d',
-  VERIFICATION_CODE: 10 * 60 * 1000, // 10 minutes
-  PASSWORD_RESET: 60 * 60 * 1000, // 1 hour
-} as const;
-
-// User Roles
 export const USER_ROLES = {
   USER: 'user',
-  ADMIN: 'admin',
   MODERATOR: 'moderator',
+  ADMIN: 'admin',
+  SUPERADMIN: 'superadmin',
 } as const;
 
-// Post Visibility
+export const USER_STATUS = {
+  ACTIVE: 'active',
+  INACTIVE: 'inactive',
+  SUSPENDED: 'suspended',
+  BANNED: 'banned',
+  DELETED: 'deleted',
+} as const;
+
+export const GENDER_OPTIONS = ['male', 'female', 'custom', 'prefer_not_to_say'] as const;
+
+export const RELATIONSHIP_STATUS = [
+  'single',
+  'in_relationship',
+  'engaged',
+  'married',
+  'separated',
+  'divorced',
+  'widowed',
+  'complicated',
+] as const;
+
+// =====================================================
+// Post Constants
+// =====================================================
+
 export const POST_VISIBILITY = {
   PUBLIC: 'public',
   FRIENDS: 'friends',
-  ONLY_ME: 'only_me',
-  SPECIFIC_FRIENDS: 'specific_friends',
-  FRIENDS_EXCEPT: 'friends_except',
+  PRIVATE: 'private',
 } as const;
 
-// Reaction Types
+export const POST_MAX_LENGTH = 63206; // Facebook's limit
+export const COMMENT_MAX_LENGTH = 8000;
+
 export const REACTION_TYPES = {
   LIKE: 'like',
   LOVE: 'love',
@@ -107,65 +116,250 @@ export const REACTION_TYPES = {
   WOW: 'wow',
   SAD: 'sad',
   ANGRY: 'angry',
-  CARE: 'care',
 } as const;
 
-// Notification Types
+export const REACTION_EMOJIS = {
+  like: '👍',
+  love: '❤️',
+  haha: '😂',
+  wow: '😮',
+  sad: '😢',
+  angry: '😡',
+} as const;
+
+// =====================================================
+// Group Constants
+// =====================================================
+
+export const GROUP_PRIVACY = {
+  PUBLIC: 'public',
+  PRIVATE: 'private',
+  SECRET: 'secret',
+} as const;
+
+export const GROUP_ROLES = {
+  CREATOR: 'creator',
+  ADMIN: 'admin',
+  MODERATOR: 'moderator',
+  MEMBER: 'member',
+} as const;
+
+// =====================================================
+// Chat Constants
+// =====================================================
+
+export const MESSAGE_MAX_LENGTH = 20000;
+export const CONVERSATION_TYPES = {
+  PRIVATE: 'private',
+  GROUP: 'group',
+} as const;
+
+export const MESSAGE_STATUS = {
+  SENDING: 'sending',
+  SENT: 'sent',
+  DELIVERED: 'delivered',
+  READ: 'read',
+  FAILED: 'failed',
+} as const;
+
+// =====================================================
+// Notification Constants
+// =====================================================
+
 export const NOTIFICATION_TYPES = {
+  // Social
   FRIEND_REQUEST: 'friend_request',
-  FRIEND_REQUEST_ACCEPTED: 'friend_request_accepted',
+  FRIEND_ACCEPTED: 'friend_accepted',
+  NEW_FOLLOWER: 'new_follower',
+  
+  // Engagement
   POST_LIKE: 'post_like',
   POST_COMMENT: 'post_comment',
+  COMMENT_REPLY: 'comment_reply',
+  COMMENT_LIKE: 'comment_like',
   POST_SHARE: 'post_share',
-  MENTION: 'mention',
-  TAG: 'tag',
-  MESSAGE: 'message',
+  POST_MENTION: 'post_mention',
+  COMMENT_MENTION: 'comment_mention',
+  
+  // Groups
   GROUP_INVITE: 'group_invite',
+  GROUP_ACCEPTED: 'group_accepted',
+  GROUP_POST: 'group_post',
+  
+  // Pages
+  PAGE_LIKE: 'page_like',
+  
+  // Events
+  EVENT_INVITE: 'event_invite',
   EVENT_REMINDER: 'event_reminder',
-  BIRTHDAY: 'birthday',
-  MEMORY: 'memory',
+  
+  // Messages
+  NEW_MESSAGE: 'new_message',
+  
+  // System
+  ACCOUNT_SECURITY: 'account_security',
+  POLICY_VIOLATION: 'policy_violation',
+  FEATURE_UPDATE: 'feature_update',
 } as const;
 
-// Message Types
-export const MESSAGE_TYPES = {
-  TEXT: 'text',
+// =====================================================
+// File Upload Constants
+// =====================================================
+
+export const FILE_TYPES = {
   IMAGE: 'image',
   VIDEO: 'video',
+  DOCUMENT: 'document',
   AUDIO: 'audio',
-  VOICE: 'voice',
-  FILE: 'file',
-  STICKER: 'sticker',
-  GIF: 'gif',
 } as const;
 
-// Story Duration
-export const STORY_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-
-// Max lengths
-export const MAX_LENGTHS = {
-  USERNAME: 50,
-  BIO: 150,
-  POST_CONTENT: 5000,
-  COMMENT_CONTENT: 1000,
-  MESSAGE_CONTENT: 5000,
-  GROUP_NAME: 100,
-  GROUP_DESCRIPTION: 500,
+export const MAX_FILE_SIZES = {
+  IMAGE: 50 * 1024 * 1024,      // 50 MB
+  VIDEO: 5 * 1024 * 1024 * 1024, // 5 GB
+  DOCUMENT: 100 * 1024 * 1024,   // 100 MB
+  AVATAR: 10 * 1024 * 1024,      // 10 MB
+  COVER: 20 * 1024 * 1024,       // 20 MB
+  STORY: 100 * 1024 * 1024,      // 100 MB
 } as const;
 
-// Cache Keys
-export const CACHE_KEYS = {
-  USER_PREFIX: 'user:',
-  POST_PREFIX: 'post:',
-  FEED_PREFIX: 'feed:',
-  SESSION_PREFIX: 'session:',
+export const ALLOWED_MIME_TYPES = {
+  IMAGE: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic'],
+  VIDEO: ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo'],
+  DOCUMENT: [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ],
 } as const;
 
-// Event Names
-export const SOCKET_EVENTS = {
+// =====================================================
+// Rate Limiting Constants
+// =====================================================
+
+export const RATE_LIMITS = {
+  // Auth endpoints
+  LOGIN: { windowMs: 15 * 60 * 1000, max: 5 },      // 5 per 15 min
+  REGISTER: { windowMs: 60 * 60 * 1000, max: 3 },   // 3 per hour
+  FORGOT_PASSWORD: { windowMs: 60 * 60 * 1000, max: 3 },
+  
+  // Content creation
+  CREATE_POST: { windowMs: 60 * 1000, max: 30 },    // 30 per min
+  CREATE_COMMENT: { windowMs: 60 * 1000, max: 60 }, // 60 per min
+  UPLOAD: { windowMs: 60 * 60 * 1000, max: 50 },    // 50 per hour
+  
+  // Chat
+  SEND_MESSAGE: { windowMs: 60 * 1000, max: 100 },  // 100 per min
+  
+  // Search
+  SEARCH: { windowMs: 60 * 1000, max: 60 },         // 60 per min
+  
+  // Default
+  DEFAULT: { windowMs: 60 * 1000, max: 100 },       // 100 per min
+} as const;
+
+// =====================================================
+// Cache TTL Constants (seconds)
+// =====================================================
+
+export const CACHE_TTL = {
+  USER_PROFILE: 3600,           // 1 hour
+  USER_FEED: 300,               // 5 minutes
+  POST: 1800,                   // 30 minutes
+  TRENDING: 600,                // 10 minutes
+  SEARCH_RESULTS: 300,          // 5 minutes
+  NOTIFICATION_COUNT: 60,       // 1 minute
+  PRESENCE: 300,                // 5 minutes
+  RATE_LIMIT: 900,              // 15 minutes
+  SESSION: 86400,               // 1 day
+} as const;
+
+// =====================================================
+// Pagination Constants
+// =====================================================
+
+export const PAGINATION = {
+  DEFAULT_PAGE: 1,
+  DEFAULT_LIMIT: 20,
+  MAX_LIMIT: 100,
+  FEED_LIMIT: 25,
+  COMMENTS_LIMIT: 50,
+  MESSAGES_LIMIT: 50,
+  SEARCH_LIMIT: 20,
+} as const;
+
+// =====================================================
+// WebSocket Events
+// =====================================================
+
+export const WS_EVENTS = {
+  // Connection
   CONNECT: 'connect',
   DISCONNECT: 'disconnect',
-  TYPING: 'typing',
-  MESSAGE: 'message',
-  NOTIFICATION: 'notification',
-  PRESENCE: 'presence',
+  ERROR: 'error',
+  
+  // Chat
+  MESSAGE: 'chat:message',
+  TYPING: 'chat:typing',
+  READ: 'chat:read',
+  
+  // Presence
+  PRESENCE_UPDATE: 'presence:update',
+  
+  // Notifications
+  NOTIFICATION: 'notification:new',
+  
+  // Feed
+  FEED_UPDATE: 'feed:update',
+  REACTION: 'feed:reaction',
+  
+  // Live Stream
+  STREAM_START: 'stream:start',
+  STREAM_END: 'stream:end',
+  STREAM_COMMENT: 'stream:comment',
+  STREAM_REACTION: 'stream:reaction',
 } as const;
+
+// =====================================================
+// Feature Flags
+// =====================================================
+
+export const FEATURES = {
+  STORIES: true,
+  REELS: true,
+  LIVE_STREAMING: true,
+  MARKETPLACE: true,
+  GROUPS: true,
+  PAGES: true,
+  EVENTS: true,
+  GAMING: false,
+  JOBS: false,
+  DATING: false,
+} as const;
+
+export default {
+  APP_NAME,
+  APP_VERSION,
+  API_VERSION,
+  API_PREFIX,
+  HTTP_STATUS,
+  ERROR_CODES,
+  USER_ROLES,
+  USER_STATUS,
+  POST_VISIBILITY,
+  POST_MAX_LENGTH,
+  COMMENT_MAX_LENGTH,
+  REACTION_TYPES,
+  GROUP_PRIVACY,
+  GROUP_ROLES,
+  MESSAGE_MAX_LENGTH,
+  NOTIFICATION_TYPES,
+  FILE_TYPES,
+  MAX_FILE_SIZES,
+  RATE_LIMITS,
+  CACHE_TTL,
+  PAGINATION,
+  WS_EVENTS,
+  FEATURES,
+};

@@ -1,0 +1,269 @@
+# =====================================================
+# Redis Cache Schema - Facebook Clone
+# Key naming conventions and data structures
+# =====================================================
+
+# =====================================================
+# User Data Cache
+# =====================================================
+
+# User profile cache (Hash)
+# Key: user:{userId}
+# TTL: 1 hour
+# Fields: id, email, username, fullName, avatarUrl, bio, etc.
+user:{userId}
+
+# User session cache (String - JSON)
+# Key: session:{sessionId}
+# TTL: Session duration
+session:{sessionId}
+
+# User online status (Hash)
+# Key: presence:{userId}
+# TTL: 5 minutes (refreshed on activity)
+# Fields: status, lastActive, device, platform
+presence:{userId}
+
+# =====================================================
+# Social Graph Cache
+# =====================================================
+
+# Friends list (Sorted Set - by friendship date)
+# Key: friends:{userId}
+# Score: timestamp
+# Members: friendId
+friends:{userId}
+
+# Followers list (Sorted Set)
+# Key: followers:{userId}
+# Score: timestamp
+# Members: followerId
+followers:{userId}
+
+# Following list (Sorted Set)
+# Key: following:{userId}
+# Score: timestamp
+# Members: followingId
+following:{userId}
+
+# Friend count (String)
+# Key: friends:count:{userId}
+friends:count:{userId}
+
+# =====================================================
+# Feed Cache
+# =====================================================
+
+# User feed (List of post IDs)
+# Key: feed:{userId}
+# TTL: 15 minutes
+feed:{userId}
+
+# Post cache (Hash)
+# Key: post:{postId}
+# TTL: 30 minutes
+# Fields: id, userId, content, createdAt, likeCount, etc.
+post:{postId}
+
+# Feed generation lock (String)
+# Key: feed:lock:{userId}
+# TTL: 10 seconds
+feed:lock:{userId}
+
+# Feed precomputed (List)
+# Key: feed:precomputed:{userId}
+# TTL: 1 hour
+feed:precomputed:{userId}
+
+# =====================================================
+# Reaction/Like Cache
+# =====================================================
+
+# Post reactions (Hash)
+# Key: reactions:post:{postId}
+# Field: reaction type (like, love, etc.)
+# Value: count
+reactions:post:{postId}
+
+# User's reaction on post (String)
+# Key: reaction:user:{userId}:post:{postId}
+# Value: reaction type
+reaction:user:{userId}:post:{postId}
+
+# Post like users (Set)
+# Key: likes:post:{postId}
+# Members: userIds who liked
+likes:post:{postId}
+
+# =====================================================
+# Chat Cache
+# =====================================================
+
+# Conversation metadata (Hash)
+# Key: conversation:{conversationId}
+# TTL: 24 hours
+conversation:{conversationId}
+
+# Conversation messages (List - JSON)
+# Key: messages:{conversationId}
+# TTL: 1 hour (for hot data)
+messages:{conversationId}
+
+# User conversations (Sorted Set - by last message)
+# Key: conversations:{userId}
+# Score: lastMessageTimestamp
+# Members: conversationId
+conversations:{userId}
+
+# Unread message count (Hash)
+# Key: unread:{conversationId}
+# Field: userId
+# Value: count
+unread:{conversationId}
+
+# Typing indicator (Set)
+# Key: typing:{conversationId}
+# Members: userIds who are typing
+# TTL: 10 seconds (refreshed on typing)
+typing:{conversationId}
+
+# =====================================================
+# Notification Cache
+# =====================================================
+
+# Unread notification count (String)
+# Key: notifications:unread:{userId}
+notifications:unread:{userId}
+
+# Notification list (List - JSON)
+# Key: notifications:{userId}
+# TTL: 5 minutes
+notifications:{userId}
+
+# =====================================================
+# Rate Limiting
+# =====================================================
+
+# Rate limit counter (String)
+# Key: ratelimit:{endpoint}:{identifier}
+# TTL: Window duration
+ratelimit:{endpoint}:{identifier}
+
+# Rate limit sliding window (Sorted Set)
+# Key: ratelimit:sliding:{endpoint}:{identifier}
+# Score: timestamp
+# Members: requestId
+ratelimit:sliding:{endpoint}:{identifier}
+
+# =====================================================
+# Authentication
+# =====================================================
+
+# JWT blacklist (String)
+# Key: token:blacklist:{token}
+# TTL: Token remaining TTL
+token:blacklist:{token}
+
+# Refresh token (String)
+# Key: refresh:{userId}:{tokenId}
+# TTL: Refresh token duration
+refresh:{userId}:{tokenId}
+
+# Login attempts (String)
+# Key: login:attempts:{email}
+# TTL: 15 minutes
+login:attempts:{email}
+
+# =====================================================
+# Search Cache
+# =====================================================
+
+# Search results cache (String - JSON)
+# Key: search:{type}:{query}:{filters}
+# TTL: 5 minutes
+search:{type}:{query}:{filters}
+
+# Trending topics (Sorted Set)
+# Key: trending:topics
+# Score: trend score
+# Members: hashtag
+trending:topics
+
+# =====================================================
+# Ads Cache
+# =====================================================
+
+# Ad campaign budget (String)
+# Key: campaign:budget:{campaignId}
+campaign:budget:{campaignId}
+
+# Ad campaign spent (String)
+# Key: campaign:spent:{campaignId}
+campaign:spent:{campaignId}
+
+# Ad impressions counter (String)
+# Key: ads:impressions:{adId}:{date}
+# TTL: 48 hours
+ads:impressions:{adId}:{date}
+
+# Winning bid cache (String - JSON)
+# Key: ads:winning_bid:{requestId}
+# TTL: 60 seconds
+ads:winning_bid:{requestId}
+
+# =====================================================
+# Pub/Sub Channels
+# =====================================================
+
+# Chat message channel
+chat:{conversationId}
+
+# User notification channel
+notifications:{userId}
+
+# Presence update channel
+presence:{userId}
+
+# Feed update channel
+feed:{userId}
+
+# System broadcast channel
+system:broadcast
+
+# =====================================================
+# Background Jobs
+# =====================================================
+
+# Job queue (List)
+# Key: jobs:{queueName}
+jobs:{queueName}
+
+# Job processing (Hash)
+# Key: job:{jobId}
+job:{jobId}
+
+# Dead letter queue (List)
+# Key: jobs:dlq:{queueName}
+jobs:dlq:{queueName}
+
+# =====================================================
+# Analytics Counters
+# =====================================================
+
+# Daily active users (HyperLogLog)
+# Key: dau:{date}
+dau:{date}
+
+# Monthly active users (HyperLogLog)
+# Key: mau:{month}
+mau:{month}
+
+# Page view counter (String)
+# Key: pageviews:{page}:{date}
+pageviews:{page}:{date}
+
+# Event counter (Hash)
+# Key: events:count:{date}
+# Field: eventType
+# Value: count
+events:count:{date}
