@@ -1,119 +1,241 @@
 # Facebook Clone - Enterprise Architecture
 
-A comprehensive Facebook clone implementation with enterprise-level architecture, featuring microservices, real-time communication, and scalable infrastructure.
+A production-ready, enterprise-scale Facebook clone built with modern microservices architecture.
 
 ## 🏗️ Architecture Overview
 
 ```
 facebook/
-├── apps/                    # Frontend Applications
-│   ├── web/                 # Next.js Web App
-│   ├── mobile/              # React Native (placeholder)
-│   └── admin-dashboard/     # Admin Dashboard
+├── apps/                                   # 🖥️ Frontend Apps
+│   ├── web/ (Next.js + GraphQL)
+│   ├── mobile/ (React Native)
+│   └── admin-dashboard/
 │
-├── gateway/                 # API Gateway Layer
-│   ├── rest/                # REST API Gateway
-│   ├── graphql/             # GraphQL Gateway
-│   ├── auth-middleware/     # Authentication Middleware
-│   └── rate-limiter/        # Rate Limiting
+├── gateway/                                # 🌐 API Gateway Layer
+│   ├── rest/                              # REST API Gateway
+│   ├── graphql/                           # GraphQL Federation
+│   ├── bff/                               # Backend for Frontend
+│   ├── auth-middleware/                   # JWT & OAuth
+│   ├── rate-limiter/                      # Rate Limiting
+│   ├── request-validator/                 # Input Validation
+│   └── response-transformer/              # Response Formatting
 │
-├── services/                # Microservices
-│   ├── auth-service/        # Authentication & Authorization
-│   ├── user-service/        # User Management
-│   ├── social-graph-service/# Friends & Followers
-│   ├── post-service/        # Posts & Content
-│   ├── feed-system/         # Feed Ranking & Fanout
-│   ├── chat-system/         # Real-time Messaging
-│   ├── notification-system/ # Push & Email Notifications
-│   ├── search-system/       # Elasticsearch Integration
-│   ├── recommendation-system/# AI/ML Recommendations
-│   ├── moderation-system/   # Content Moderation
-│   ├── media-system/        # Upload & Processing
-│   └── ... more
+├── services/                               # 🔥 ALL MICROSERVICES
+│   ├── auth-service/                      # Authentication
+│   │   ├── oauth/                         # OAuth Providers
+│   │   ├── jwt/                           # JWT Token Management
+│   │   ├── session-management/            # Session Handling
+│   │   ├── 2fa/                           # Two-Factor Auth
+│   │   └── device-tracking/               # Device Management
+│   │
+│   ├── user-service/                      # User Management
+│   │   ├── profile/                       # User Profiles
+│   │   ├── settings/                      # User Settings
+│   │   ├── privacy/                       # Privacy Controls
+│   │   └── blocking/                      # User Blocking
+│   │
+│   ├── social-graph-service/              # Social Relationships
+│   │   ├── friend/                        # Friendships
+│   │   ├── follow/                        # Followers
+│   │   └── graph-db/                      # Graph Database
+│   │
+│   ├── post-service/                      # Posts
+│   │   ├── text/                          # Text Posts
+│   │   ├── media/                         # Media Posts
+│   │   └── tagging/                       # Tagging System
+│   │
+│   ├── comment-service/                   # Comments
+│   ├── reaction-service/                  # Reactions
+│   ├── save-service/                      # Saved Posts
+│   ├── memory-service/                    # Memories
+│   │
+│   ├── feed-system/                       # 📰 Feed Engine
+│   │   ├── feed-api/                      # Feed API
+│   │   ├── feed-fanout-service/          # Push/Pull Model
+│   │   ├── feed-ranking-service/         # ML Ranking
+│   │   ├── feed-precompute-worker/       # Precomputation
+│   │   └── feed-cache/                    # Feed Caching
+│   │
+│   ├── story-service/                     # Stories
+│   ├── reels-service/                     # Reels
+│   ├── live-stream-service/               # Live Streaming
+│   │
+│   ├── group-service/                     # Groups
+│   ├── page-service/                      # Pages
+│   ├── event-service/                     # Events
+│   ├── marketplace-service/               # Marketplace
+│   │
+│   ├── ads-system/                        # 💰 Ads Engine
+│   │   ├── ad-manager/                    # Campaign Management
+│   │   ├── targeting-engine/              # Ad Targeting
+│   │   ├── bidding-engine/                # Real-time Bidding
+│   │   ├── tracking/                      # Impression/Click Tracking
+│   │   └── analytics/                     # Ad Analytics
+│   │
+│   ├── chat-system/                       # 💬 Messenger
+│   │   ├── chat-service/                  # Chat Logic
+│   │   ├── conversation-service/          # Conversations
+│   │   ├── message-service/               # Messages
+│   │   ├── delivery-service/              # Message Delivery
+│   │   ├── presence-service/              # Online Status
+│   │   ├── typing-service/                # Typing Indicators
+│   │   ├── attachment-service/            # File Attachments
+│   │   └── websocket-gateway/             # WebSocket Server
+│   │
+│   ├── notification-system/               # 🔔 Notifications
+│   │   ├── notification-service/          # Notification Logic
+│   │   ├── push-service/                  # FCM/APNS
+│   │   ├── email-service/                 # Email Notifications
+│   │   ├── sms-service/                   # SMS Notifications
+│   │   └── preference-service/            # User Preferences
+│   │
+│   ├── search-system/                     # 🔍 Search
+│   │   ├── elasticsearch/                 # Elasticsearch
+│   │   ├── autocomplete/                  # Autocomplete
+│   │   ├── hashtag-search/                # Hashtag Search
+│   │   ├── trending/                      # Trending Topics
+│   │   └── indexing-workers/              # Index Workers
+│   │
+│   ├── recommendation-system/             # 🤖 AI/ML
+│   │   ├── friend-suggestion/             # Friend Suggestions
+│   │   ├── content-recommendation/        # Content Recommendations
+│   │   ├── reels-recommendation/          # Reels Recommendations
+│   │   └── ads-recommendation/            # Ad Recommendations
+│   │
+│   ├── moderation-system/                 # 🛡️ Safety
+│   │   ├── content-moderation/            # Content Filtering
+│   │   ├── report-system/                 # User Reports
+│   │   ├── auto-ban/                      # Automatic Bans
+│   │   └── human-review/                  # Manual Review
+│   │
+│   ├── ai-platform/                       # 🧠 AI Platform
+│   │   ├── ml-ranking/                    # ML Ranking Models
+│   │   ├── nlp/                           # Natural Language
+│   │   ├── vision/                        # Computer Vision
+│   │   └── spam-detection/                # Spam Detection
+│   │
+│   ├── media-system/                      # 📷 Media Processing
+│   │   ├── upload-service/                # File Upload
+│   │   ├── image-processing/              # Image Processing
+│   │   ├── video-transcoding/             # Video Transcoding
+│   │   ├── thumbnail-generator/           # Thumbnail Generation
+│   │   └── CDN-integration/               # CDN Integration
+│   │
+│   ├── storage-system/                    # 💾 Storage
+│   │   ├── object-storage/                # S3 Compatible
+│   │   ├── image-storage/                 # Image Storage
+│   │   ├── video-storage/                 # Video Storage
+│   │   └── backup/                        # Backup System
+│   │
+│   ├── cache-system/                      # ⚡ Caching
+│   │   ├── redis/                         # Redis
+│   │   ├── feed-cache/                    # Feed Cache
+│   │   ├── session-cache/                 # Session Cache
+│   │   └── query-cache/                   # Query Cache
+│   │
+│   ├── queue-system/                      # 📨 Message Queues
+│   │   ├── kafka/                         # Kafka
+│   │   ├── rabbitmq/                      # RabbitMQ
+│   │   ├── event-stream/                  # Event Streaming
+│   │   └── dead-letter-queue/             # Dead Letters
+│   │
+│   ├── analytics-system/                  # 📊 Analytics
+│   │   ├── event-tracking/                # Event Tracking
+│   │   ├── data-pipeline/                 # Data Pipeline
+│   │   ├── data-lake/                     # Data Lake
+│   │   ├── warehouse/                     # Data Warehouse
+│   │   └── dashboards/                    # Dashboards
+│   │
+│   ├── security-system/                   # 🔒 Security
+│   │   ├── rate-limiter/                  # Rate Limiting
+│   │   ├── fraud-detection/               # Fraud Detection
+│   │   ├── abuse-detection/               # Abuse Detection
+│   │   ├── encryption/                    # Encryption
+│   │   └── audit-logs/                    # Audit Logs
+│   │
+│   ├── config-service/                    # ⚙️ Configuration
+│   │   ├── feature-flags/                 # Feature Flags
+│   │   └── dynamic-config/                # Dynamic Config
+│   │
+│   ├── background-jobs/                   # 🔄 Background Jobs
+│   │   ├── cron-jobs/                     # Scheduled Jobs
+│   │   ├── workers/                       # Job Workers
+│   │   └── schedulers/                    # Job Schedulers
+│   │
+│   └── observability/                     # 👁️ Observability
+│       ├── logging/                       # Logging
+│       ├── metrics/                       # Metrics
+│       ├── tracing/                       # Distributed Tracing
+│       └── alerting/                      # Alerting
 │
-├── database/                # Data Layer
-│   ├── sql/                 # PostgreSQL
-│   ├── nosql/               # MongoDB/Cassandra
-│   ├── graph-db/            # Neo4j
-│   └── cache/               # Redis
+├── database/                               # 🗄️ Data Layer
+│   ├── sql/ (PostgreSQL)
+│   │   ├── users.sql
+│   │   ├── posts.sql
+│   │   ├── comments.sql
+│   │   ├── groups.sql
+│   │   ├── events.sql
+│   │   └── migrations/
+│   │
+│   ├── nosql/ (MongoDB)
+│   │   ├── messages.schema.ts
+│   │   └── schema.mongodb
+│   │
+│   ├── graph-db/ (Neo4j)
+│   │   └── social-graph.ts
+│   │
+│   ├── search-index/ (Elasticsearch)
+│   │   └── elasticsearch-config.ts
+│   │
+│   ├── cache/ (Redis)
+│   │   └── redis-schema.txt
+│   │
+│   └── sharding/
+│       ├── user-shards/
+│       ├── message-shards/
+│       └── feed-shards/
 │
-├── infrastructure/          # DevOps
-│   ├── docker/              # Docker Compose
-│   ├── kubernetes/          # K8s Configurations
-│   └── ci-cd/               # CI/CD Pipelines
+├── realtime/                               # ⚡ Real-time Systems
+│   ├── websocket-cluster/
+│   ├── pubsub/
+│   └── event-bus/
 │
-└── shared/                  # Shared Code
-    ├── utils/               # Utility Functions
-    ├── constants/           # Constants
-    ├── types/               # TypeScript Types
-    └── sdk/                 # Service SDKs
+├── infrastructure/                         # ☁️ DevOps
+│   ├── docker/
+│   │   └── docker-compose.yml
+│   ├── kubernetes/
+│   │   └── deployment.yml
+│   ├── service-mesh/
+│   │   └── istio-config.yml
+│   ├── load-balancer/
+│   │   └── config.ts
+│   ├── service-discovery/
+│   │   └── consul.ts
+│   ├── autoscaling/
+│   │   └── config.ts
+│   └── ci-cd/
+│       └── github-actions.yml
+│
+└── shared/                                 # ♻️ Shared Code
+    ├── utils/
+    ├── constants/
+    ├── types/
+    ├── middlewares/
+    ├── logger/
+    └── sdk/
 ```
 
-## 🚀 Features
-
-### Implemented Features
-- ✅ User Authentication (JWT, OAuth ready)
-- ✅ User Profiles & Settings
-- ✅ Posts, Comments, Reactions
-- ✅ Friends & Followers System
-- ✅ Real-time Chat (WebSocket)
-- ✅ Notifications
-- ✅ Stories & Reels
-- ✅ Groups & Pages
-- ✅ Events & RSVP
-- ✅ Marketplace
-- ✅ Search System
-- ✅ Feed Ranking Algorithm
-- ✅ Content Moderation
-- ✅ Admin Dashboard
-- ✅ Rate Limiting
-- ✅ Device Tracking
-- ✅ Two-Factor Authentication
-
-### Planned Features
-- 🔲 Video/Live Streaming
-- 🔲 Ads System
-- 🔲 AI Recommendations
-- 🔲 Mobile App (React Native)
-- 🔲 GraphQL API
-
-## 🛠️ Technology Stack
-
-### Frontend
-- Next.js 16 (App Router)
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- shadcn/ui
-
-### Backend
-- Node.js / Bun
-- Express / Next.js API Routes
-- Prisma ORM
-- Socket.io
-
-### Databases
-- PostgreSQL (SQL)
-- MongoDB (NoSQL)
-- Redis (Cache)
-- Neo4j (Graph DB)
-- Elasticsearch (Search)
-
-### Infrastructure
-- Docker
-- Kubernetes
-- Kafka / RabbitMQ
-- Prometheus / Grafana
-- Jaeger (Tracing)
-
-## 📦 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ or Bun
+- Node.js 20+
 - Docker & Docker Compose
-- PostgreSQL (or use Docker)
+- PostgreSQL 15+
+- Redis 7+
+- MongoDB 6+
+- Elasticsearch 8+
 
-### Installation
+### Development Setup
 
 ```bash
 # Clone the repository
@@ -121,138 +243,117 @@ git clone https://github.com/fahad-ahamed/facebook-clone-enterprise.git
 cd facebook-clone-enterprise
 
 # Install dependencies
-bun install
+npm install
 
-# Set up environment variables
+# Copy environment variables
 cp .env.example .env
 
-# Start databases with Docker
+# Start infrastructure services
 docker-compose -f infrastructure/docker/docker-compose.yml up -d
 
 # Run database migrations
-bunx prisma db push
+npx prisma migrate dev
+
+# Seed the database
+npx prisma db seed
 
 # Start development server
-bun dev
+npm run dev
 ```
 
-### Environment Variables
+## 📦 Tech Stack
 
-```env
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/facebook"
+### Frontend
+- Next.js 14 (App Router)
+- React 18
+- TypeScript
+- Tailwind CSS
+- Apollo Client (GraphQL)
 
-# Redis
-REDIS_URL="redis://localhost:6379"
+### Backend
+- Node.js 20
+- Express / Fastify
+- GraphQL (Apollo Federation)
+- Prisma ORM
 
-# JWT
-JWT_SECRET="your-secret-key"
+### Databases
+- PostgreSQL (Primary SQL)
+- MongoDB (Messages, Feeds)
+- Redis (Caching, Sessions)
+- Neo4j (Social Graph)
+- Elasticsearch (Search)
 
-# Email (Resend)
-RESEND_API_KEY="your-resend-key"
-```
+### Message Queues
+- Kafka (Event Streaming)
+- RabbitMQ (Task Queues)
 
-## 📚 API Documentation
+### Infrastructure
+- Docker & Kubernetes
+- Istio Service Mesh
+- Nginx / HAProxy
+- Consul (Service Discovery)
+- Prometheus & Grafana (Monitoring)
 
-### Authentication
-```
-POST /api/auth/register    # Register new user
-POST /api/auth/login       # Login
-POST /api/auth/logout      # Logout
-GET  /api/auth/me          # Get current user
-```
+### Cloud Services
+- AWS S3 (Object Storage)
+- AWS CloudFront (CDN)
+- AWS SES (Email)
+- Firebase Cloud Messaging (Push Notifications)
 
-### Posts
-```
-GET    /api/posts          # Get feed
-POST   /api/posts          # Create post
-DELETE /api/posts/:id      # Delete post
-POST   /api/posts/:id/react # Add reaction
-```
+## 📊 Services Count
 
-### Social
-```
-GET  /api/friends          # Get friends
-POST /api/friends          # Send friend request
-GET  /api/follow           # Get followers/following
-POST /api/follow           # Follow/unfollow
-```
+| Category | Count |
+|----------|-------|
+| Frontend Apps | 3 |
+| Gateway Components | 7 |
+| Microservices | 32 |
+| Database Types | 6 |
+| Realtime Systems | 3 |
+| Infrastructure Components | 7 |
+| Shared Modules | 6 |
 
-### Chat
-```
-GET  /api/conversations    # Get conversations
-POST /api/conversations    # Create conversation
-GET  /api/conversations/:id # Get messages
-POST /api/conversations/:id # Send message
-```
+## 🔗 API Endpoints
 
-## 🔧 Development
+### REST API
+- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/auth/register` - User registration
+- `GET /api/v1/users/:id` - Get user profile
+- `POST /api/v1/posts` - Create post
+- `GET /api/v1/feed` - Get feed
+- `GET /api/v1/search` - Search
 
-### Project Structure
+### GraphQL
+- `POST /graphql` - GraphQL endpoint
+- `GET /graphql` - GraphQL Playground (dev)
 
-Each service follows a consistent structure:
-```
-service-name/
-├── index.ts           # Service entry point
-├── routes/            # API routes
-├── controllers/       # Request handlers
-├── services/          # Business logic
-├── models/            # Data models
-└── tests/             # Unit tests
-```
+### WebSocket
+- `ws://localhost:4001/ws` - WebSocket connection
 
-### Running Tests
-```bash
-bun test
-```
+## 📈 Scalability
 
-### Linting
-```bash
-bun lint
-```
+This architecture supports:
+- **Horizontal Scaling**: All services can be scaled independently
+- **Database Sharding**: User, message, and feed data sharding
+- **Caching Strategy**: Multi-level caching (Redis, CDN)
+- **Event-Driven**: Asynchronous communication via Kafka
+- **Service Mesh**: Istio for traffic management and security
 
-## 🐳 Docker
+## 🔐 Security Features
 
-### Build & Run
-```bash
-# Build all services
-docker-compose -f infrastructure/docker/docker-compose.yml build
+- JWT Authentication with refresh tokens
+- OAuth 2.0 (Google, Facebook, Apple)
+- Two-Factor Authentication (TOTP)
+- Rate Limiting
+- CORS Protection
+- XSS Prevention
+- CSRF Protection
+- Content Moderation
+- Fraud Detection
 
-# Run all services
-docker-compose -f infrastructure/docker/docker-compose.yml up
-```
+## 📝 License
 
-## ☸️ Kubernetes
-
-### Deploy to K8s
-```bash
-kubectl apply -f infrastructure/kubernetes/
-```
-
-## 📊 Monitoring
-
-Access monitoring dashboards:
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3002
-- Jaeger: http://localhost:16686
+MIT License
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- Facebook for inspiration
-- All open-source contributors
-- shadcn/ui for beautiful components
-
----
-
-**Note**: This is a educational project and is not affiliated with Meta/Facebook.
+Please read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.
